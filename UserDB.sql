@@ -1,0 +1,10 @@
+CREATE DATABASE UserDB;
+USE UserDB;
+
+CREATE TABLE UserDB (
+    Username VARCHAR(50) PRIMARY KEY NOT NULL,
+    Fullname VARCHAR(100),
+    PasswordHash VARCHAR(255),
+    Email VARCHAR(100),
+    Phone VARCHAR(20)
+)
