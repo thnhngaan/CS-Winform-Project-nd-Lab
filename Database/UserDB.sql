@@ -63,7 +63,7 @@ CREATE TABLE MatchDB
 );
 GO
 
--- MATCHMOVEDB (tuỳ chọn - DB lưu nước đi)
+-- MATCHMOVE (tuỳ chọn - DB lưu nước đi)
 CREATE TABLE MatchMoveDB (
     MoveID INT IDENTITY PRIMARY KEY,
     MatchID INT NOT NULL,
