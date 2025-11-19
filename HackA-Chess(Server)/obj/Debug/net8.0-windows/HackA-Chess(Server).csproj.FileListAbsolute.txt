@@ -1,0 +1,16 @@
+D:\HackA-Chess(Server)\HackA-Chess(Server)\obj\Debug\net8.0-windows\HackA-Chess(Server).csproj.GenerateResource.cache
+D:\HackA-Chess(Server)\HackA-Chess(Server)\obj\Debug\net8.0-windows\HackA-Chess(Server).GeneratedMSBuildEditorConfig.editorconfig
+D:\HackA-Chess(Server)\HackA-Chess(Server)\obj\Debug\net8.0-windows\HackA-Chess(Server).AssemblyInfoInputs.cache
+D:\HackA-Chess(Server)\HackA-Chess(Server)\obj\Debug\net8.0-windows\HackA-Chess(Server).AssemblyInfo.cs
+D:\HackA-Chess(Server)\HackA-Chess(Server)\obj\Debug\net8.0-windows\HackA-Chess(Server).csproj.CoreCompileInputs.cache
+D:\HackA-Chess(Server)\HackA-Chess(Server)\bin\Debug\net8.0-windows\HackA-Chess(Server).exe
+D:\HackA-Chess(Server)\HackA-Chess(Server)\bin\Debug\net8.0-windows\HackA-Chess(Server).deps.json
+D:\HackA-Chess(Server)\HackA-Chess(Server)\bin\Debug\net8.0-windows\HackA-Chess(Server).runtimeconfig.json
+D:\HackA-Chess(Server)\HackA-Chess(Server)\bin\Debug\net8.0-windows\HackA-Chess(Server).dll
+D:\HackA-Chess(Server)\HackA-Chess(Server)\bin\Debug\net8.0-windows\HackA-Chess(Server).pdb
+D:\HackA-Chess(Server)\HackA-Chess(Server)\obj\Debug\net8.0-windows\HackA_Chess_Server_.Server.resources
+D:\HackA-Chess(Server)\HackA-Chess(Server)\obj\Debug\net8.0-windows\HackA-Chess(Server).dll
+D:\HackA-Chess(Server)\HackA-Chess(Server)\obj\Debug\net8.0-windows\refint\HackA-Chess(Server).dll
+D:\HackA-Chess(Server)\HackA-Chess(Server)\obj\Debug\net8.0-windows\HackA-Chess(Server).pdb
+D:\HackA-Chess(Server)\HackA-Chess(Server)\obj\Debug\net8.0-windows\HackA-Chess(Server).genruntimeconfig.cache
+D:\HackA-Chess(Server)\HackA-Chess(Server)\obj\Debug\net8.0-windows\ref\HackA-Chess(Server).dll

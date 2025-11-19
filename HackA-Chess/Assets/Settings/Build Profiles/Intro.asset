@@ -21,7 +21,7 @@ MonoBehaviour:
   m_OverrideGlobalSceneList: 1
   m_Scenes:
   - m_enabled: 1
-    m_path: Assets/Scenes/New Folder/IntroGame.unity
+    m_path: Assets/Scenes/Intro/IntroGame.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Login.unity
   - m_enabled: 1
