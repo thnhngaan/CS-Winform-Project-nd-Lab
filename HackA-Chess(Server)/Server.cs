@@ -1,16 +1,17 @@
-﻿using System;
+﻿using Microsoft.Data.SqlClient;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace HackA_Chess_Server_
 {
@@ -25,18 +26,28 @@ namespace HackA_Chess_Server_
         #region Các hàm Login, Register
         static bool CheckLogin(string username, string hashedPassword)
         {
-            //sql nha cưng
-            return true;
+            using (SqlConnection conn = Connection.GetSqlConnection())
+            {
+                conn.Open();
+                string query = "SELECT COUNT(*) FROM UserDB WHERE Username=@user AND PasswordHash=@pass";
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@user", username);
+                    cmd.Parameters.AddWithValue("@pass", hashedPassword); // so sánh hash
+                    int count = (int)cmd.ExecuteScalar();
+                    return count > 0;
+                }
+            }
         }
 
         private bool UsernameExist(string username) //có rồi thì trả về 1 chưa có thì trả về 0
         {
-            /*try
+            try
             {
                 using (SqlConnection conn = Connection.GetSqlConnection())
                 {
                     conn.Open();
-                    string query = "SELECT COUNT(*) FROM Users WHERE Username = @user";
+                    string query = "SELECT COUNT(*) FROM UserDB WHERE Username = @user";
                     using (SqlCommand cmd = new SqlCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@user", username);
@@ -49,18 +60,18 @@ namespace HackA_Chess_Server_
             {
                 AppendText("Lỗi kiểm tra UsernameExist: " + ex.Message);
                 return true; // giả định tồn tại để tránh thêm trùng khi lỗi
-            }*/
+            }
             return false;
         }
 
         private void AddUsertoDatabase(string username, string password, string email, string fullname, string sdt)
         {
-            /*try
+            try
             {
                 using (SqlConnection conn = Connection.GetSqlConnection())
                 {
                     conn.Open();
-                    string query = "INSERT INTO Users (USERNAME, PASSWORD, EMAIL, MOBILENUMBER, FULLNAME) VALUES (@user, @pass, @mail, @phone, @name)";
+                    string query = "INSERT INTO UserDB (USERNAME, PASSWORDHASH, EMAIL, PHONE, FULLNAME) VALUES (@user, @pass, @mail, @phone, @name)";
                     using (SqlCommand cmd = new SqlCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@user", username);
@@ -72,12 +83,12 @@ namespace HackA_Chess_Server_
                         cmd.ExecuteNonQuery();
                     }
                 }
-                AppendText($"✅ Đã thêm user {username} vào database");
+                AppendText($"Đã thêm user {username} vào database");
             }
             catch (Exception ex)
             {
                 AppendText("Lỗi " + ex.Message);
-            }*/
+            }
         }
         #endregion
         private void TCPServer_Load(object sender, EventArgs e)
@@ -107,7 +118,7 @@ namespace HackA_Chess_Server_
         private async Task<string> ReceiveMessage(NetworkStream stream)
         {
             byte[] buffer = new byte[1024];
-            int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length); 
+            int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
             if (bytesRead <= 0) return null;
             return Encoding.UTF8.GetString(buffer, 0, bytesRead);
         }
@@ -164,13 +175,13 @@ namespace HackA_Chess_Server_
                         }
                         if (parts[0] == "REGISTER") //register
                         {
-                            if (parts.Length < 5)
+                            if (parts.Length < 6)
                             {
                                 AppendText($"Client {clientEP} gửi dữ liệu không hợp lệ: {data}");
                                 byte[] InvalidData = Encoding.UTF8.GetBytes("Fail: Invalid data");
                                 await stream.WriteAsync(InvalidData, 0, InvalidData.Length);
                                 continue;
-                            }   
+                            }
                             //REGISTER|username|password|email|fullname|phone
                             string Username = parts[1];
                             string Password = parts[2];
@@ -196,7 +207,7 @@ namespace HackA_Chess_Server_
                     while (client.Connected) //còn vòng while này dành cho các tác vụ khác khi đã login vào server và nó sẽ giữ connected cho đến khi logout
                     {
                         string msg = await ReceiveMessage(stream);
-                        if (msg == null) break;
+                        if (msg == null) continue;
                         AppendText($"[Đã đăng nhập] {clientEP}: {msg}");
                         string[] parts = msg.Split('|');
                         if (parts[0] == "LOGOUT")
@@ -226,9 +237,6 @@ namespace HackA_Chess_Server_
             }
         }
         #endregion
-
-
-
 
 
         #region Các hàm update UI server
@@ -262,5 +270,30 @@ namespace HackA_Chess_Server_
             }
         }
         #endregion
+
+        private void tb_ipserver_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label2_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void rtb_clientsconnection_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label3_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 }

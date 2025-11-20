@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HackA-Chess(Server)")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+50dd98fa174d8d171fc2a290096c87cd653d995f")]
 [assembly: System.Reflection.AssemblyProductAttribute("HackA-Chess(Server)")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HackA-Chess(Server)")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
