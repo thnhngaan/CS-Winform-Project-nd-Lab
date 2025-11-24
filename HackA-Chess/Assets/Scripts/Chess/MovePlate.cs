@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-public class MovePlate : MonoBehaviour
+public class MovePlate : MonoBehaviour // Hàm hiện bước đi
 {
     private Game gameController;
 
@@ -11,14 +11,12 @@ public class MovePlate : MonoBehaviour
 
     public bool attack = false;
 
-    // Nhập thành
     public bool isCastling = false;
     public int rookFromX, rookFromY;
     public int rookToX, rookToY;
 
     void Start()
     {
-        // Tự tìm GameController theo tag
         GameObject controllerObj = GameObject.FindGameObjectWithTag("GameController");
         if (controllerObj != null)
         {
@@ -44,8 +42,7 @@ public class MovePlate : MonoBehaviour
         }
 
         Chessman cm = reference.GetComponent<Chessman>();
-
-        // Nếu đây là ô tấn công thì ăn quân
+        bool gameEnded = false;
         if (attack)
         {
             GameObject cp = gameController.GetPosition(matrixX, matrixY);
@@ -53,16 +50,20 @@ public class MovePlate : MonoBehaviour
             if (cp != null)
             {
                 if (cp.name == "chess_white_king")
+                {
                     gameController.Winner("black");
-
+                    gameEnded = true;
+                }
                 if (cp.name == "chess_black_king")
+                {
                     gameController.Winner("white");
+                    gameEnded = true;
+                }
+
 
                 Destroy(cp);
             }
         }
-
-        // Nếu là nhập thành -> di chuyển rook
         if (isCastling)
         {
             GameObject rook = gameController.GetPosition(rookFromX, rookFromY);
@@ -80,25 +81,20 @@ public class MovePlate : MonoBehaviour
             }
         }
 
-        // Xóa vị trí cũ
         gameController.SetPositionEmpty(cm.GetXBoard(), cm.GetYBoard());
-
-        // Cập nhật quân di chuyển
         cm.SetXBoard(matrixX);
         cm.SetYBoard(matrixY);
         cm.SetCoords();
         cm.hasMoved = true;
 
-        // Ghi lại lên board
         gameController.SetPosition(reference);
-
-        // Phong cấp nếu là tốt
         TryPromote(cm);
+   
+        if (!gameEnded)
+        {
+            gameController.NextTurn();
+        }
 
-        // Đổi lượt
-        gameController.NextTurn();
-
-        // Xóa tất cả MovePlate
         cm.DestroyMovePlates();
     }
 
@@ -106,14 +102,12 @@ public class MovePlate : MonoBehaviour
     {
         SpriteRenderer sr = cm.GetComponent<SpriteRenderer>();
 
-        // Tốt trắng lên hàng 7
         if (cm.name == "chess_white_pawn" && cm.GetYBoard() == 7)
         {
             cm.name = "chess_white_queen";
             sr.sprite = cm.chess_queen_white;
         }
 
-        // Tốt đen xuống hàng 0
         if (cm.name == "chess_black_pawn" && cm.GetYBoard() == 0)
         {
             cm.name = "chess_black_queen";

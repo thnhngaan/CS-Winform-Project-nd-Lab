@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-public class Chessman : MonoBehaviour
+public class Chessman : MonoBehaviour // hàm nước đi của cờ
 {
     public GameObject controller;
     public GameObject movePlate;
@@ -50,8 +50,8 @@ public class Chessman : MonoBehaviour
         x *= 1.25f;
         y *= 1.25f;
 
-        x += -4.35f;
-        y += -4.35f;
+        x += -4.37f;
+        y += -4.37f;
 
         this.transform.position = new Vector3(x, y, -1.0f);
 
@@ -198,13 +198,9 @@ public class Chessman : MonoBehaviour
         Game sc = controller.GetComponent<Game>();
 
         int dir = (player == "white") ? 1 : -1;
-
-        // Đi 1 ô thẳng
         if (sc.PositionOnBoard(x, y) && sc.GetPosition(x, y) == null)
         {
             MovePlateSpawn(x, y);
-
-            // Nếu vẫn ở hàng xuất phát thì cho đi 2 ô
             int startRank = (player == "white") ? 1 : 6;
             if (yBoard == startRank)
             {
@@ -234,18 +230,13 @@ public class Chessman : MonoBehaviour
 
     public void MovePlateSpawn(int matrixX, int matrixY)
     {
-        //Get the board value in order to convert to xy coords
         float x = matrixX;
         float y = matrixY;
-
-        //Adjust by variable offset
         x *= 1.25f;
         y *= 1.25f;
 
-        x += -4.35f;
-        y += -4.35f;
-
-        //Set actual unity values
+        x += -4.37f;
+        y += -4.37f;
         GameObject mp = Instantiate(movePlate, new Vector3(x, y, -3.0f), Quaternion.identity);
 
         MovePlate mpScript = mp.GetComponent<MovePlate>();
@@ -255,18 +246,15 @@ public class Chessman : MonoBehaviour
 
     public void MovePlateAttackSpawn(int matrixX, int matrixY)
     {
-        //Get the board value in order to convert to xy coords
         float x = matrixX;
         float y = matrixY;
 
-        //Adjust by variable offset
         x *= 1.25f;
         y *= 1.25f;
 
-        x += -4.35f;
-        y += -4.35f;
+        x += -4.37f;
+        y += -4.37f;
 
-        //Set actual unity values
         GameObject mp = Instantiate(movePlate, new Vector3(x, y, -3.0f), Quaternion.identity);
 
         MovePlate mpScript = mp.GetComponent<MovePlate>();
@@ -285,8 +273,8 @@ public class Chessman : MonoBehaviour
         x *= 1.25f;
         y *= 1.25f;
 
-        x += -4.35f;
-        y += -4.35f;
+        x += -4.37f;
+        y += -4.37f;
 
         GameObject mp = Instantiate(movePlate, new Vector3(x, y, -3.0f), Quaternion.identity);
 
@@ -305,13 +293,10 @@ public class Chessman : MonoBehaviour
     public void CastlingMovePlate()
     {
         Game sc = controller.GetComponent<Game>();
-
-        // Vua trắng ở e1 (4,0)
         if (player == "white" && xBoard == 4 && yBoard == 0)
         {
             Chessman kingCm = GetComponent<Chessman>();
 
-            // Rook bên phải (h1: 7,0)
             GameObject rookRight = sc.GetPosition(7, 0);
             if (rookRight != null)
             {
@@ -323,8 +308,6 @@ public class Chessman : MonoBehaviour
                     MovePlateCastlingSpawn(6, 0, 7, 0, 5, 0);
                 }
             }
-
-            // Rook bên trái (a1: 0,0)
             GameObject rookLeft = sc.GetPosition(0, 0);
             if (rookLeft != null)
             {
@@ -338,13 +321,9 @@ public class Chessman : MonoBehaviour
                 }
             }
         }
-
-        // Vua đen ở e8 (4,7)
         if (player == "black" && xBoard == 4 && yBoard == 7)
         {
             Chessman kingCm = GetComponent<Chessman>();
-
-            // Rook phải (h8: 7,7)
             GameObject rookRight = sc.GetPosition(7, 7);
             if (rookRight != null)
             {
@@ -356,8 +335,6 @@ public class Chessman : MonoBehaviour
                     MovePlateCastlingSpawn(6, 7, 7, 7, 5, 7);
                 }
             }
-
-            // Rook trái (a8: 0,7)
             GameObject rookLeft = sc.GetPosition(0, 7);
             if (rookLeft != null)
             {

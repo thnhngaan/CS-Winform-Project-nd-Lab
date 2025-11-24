@@ -1,20 +1,23 @@
+﻿using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-public class Game : MonoBehaviour
+public class Game : MonoBehaviour // Hàm quản lí bàn cờ 
 {
     public GameObject chesspiece;
 
-    private GameObject[,] positions = new GameObject[8, 8];
+    private GameObject[,] positions = new GameObject[8, 8]; // Tạo mảng vị trí bàn cờ
     private GameObject[] playerBlack = new GameObject[16];
     private GameObject[] playerWhite = new GameObject[16];
 
-    private string currentPlayer = "white";
-    private bool gameOver = false;
+    private string currentPlayer = "white"; // Cho trắng đi trước
+    private bool gameOver = false; // đặt cờ cho scene GameOver
+    public Timer timerController; // Gọi timer
 
     void Start()
     {
+        Time.timeScale = 1f;
         playerWhite = new GameObject[]
         { Create("chess_white_rook", 0, 0),Create("chess_white_knight", 1, 0),
         Create("chess_white_bishop", 2, 0), Create("chess_white_queen", 3, 0), Create("chess_white_king", 4, 0),
@@ -89,21 +92,18 @@ public class Game : MonoBehaviour
         {
             currentPlayer = "white";
         }
-    }
-
-    public void Update()
-    {
-        if (gameOver == true && Input.GetMouseButtonDown(0))
-        {
-            gameOver = false;
-
-            SceneManager.LoadScene("Game");
-        }
+        
     }
 
     public void Winner(string playerWinner)
     {
         gameOver = true;
+        currentPlayer = "none";
+        gameOverUI.ShowGameOver(playerWinner);
     }
 
+    public GameOverScreen  gameOverUI;
+
+
 }
+ 
