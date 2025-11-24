@@ -1,0 +1,133 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|d:\\devil_112k\\no_0015_ltm\\cs-winform-project-nd-lab\\hacka-chess\\assets\\scripts\\joinroom.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\joinroom.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\assets\\scripts\\checkregister.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\checkregister.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\assets\\scripts\\checklogin.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\checklogin.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\assets\\scripts\\progressbarintro.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\progressbarintro.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\assets\\scripts\\messageboxshow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\messageboxshow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\assets\\scripts\\hieuungnhapnhay.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\hieuungnhapnhay.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\assets\\scripts\\loadscene.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\loadscene.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 252,
+          "SelectedChildIndex": 2,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "CheckLogin.cs",
+              "DocumentMoniker": "D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\CheckLogin.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\CheckLogin.cs",
+              "ToolTip": "D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\CheckLogin.cs",
+              "RelativeToolTip": "Assets\\Scripts\\CheckLogin.cs",
+              "ViewState": "AgIAAAgAAAAAAAAAAADgvxYAAAAXAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-22T03:34:33.287Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "JoinRoom.cs",
+              "DocumentMoniker": "D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\JoinRoom.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\JoinRoom.cs",
+              "ToolTip": "D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\JoinRoom.cs",
+              "RelativeToolTip": "Assets\\Scripts\\JoinRoom.cs",
+              "ViewState": "AgIAADUCAAAAAAAAAAAuwEQCAAANAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-22T00:18:45.342Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "CheckRegister.cs",
+              "DocumentMoniker": "D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\CheckRegister.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\CheckRegister.cs",
+              "ToolTip": "D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\CheckRegister.cs",
+              "RelativeToolTip": "Assets\\Scripts\\CheckRegister.cs",
+              "ViewState": "AgIAAI8AAAAAAAAAAAAYwMAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-22T00:17:57.005Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "MessageBoxShow.cs",
+              "DocumentMoniker": "D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\MessageBoxShow.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\MessageBoxShow.cs",
+              "ToolTip": "D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\MessageBoxShow.cs",
+              "RelativeToolTip": "Assets\\Scripts\\MessageBoxShow.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-22T00:17:09.457Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "ProgressbarIntro.cs",
+              "DocumentMoniker": "D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\ProgressbarIntro.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\ProgressbarIntro.cs",
+              "ToolTip": "D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\ProgressbarIntro.cs",
+              "RelativeToolTip": "Assets\\Scripts\\ProgressbarIntro.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAaAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-22T00:16:51.023Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "LoadScene.cs",
+              "DocumentMoniker": "D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\LoadScene.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\LoadScene.cs",
+              "ToolTip": "D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\LoadScene.cs",
+              "RelativeToolTip": "Assets\\Scripts\\LoadScene.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-22T00:16:48.106Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "HieuUngNhapNhay.cs",
+              "DocumentMoniker": "D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\HieuUngNhapNhay.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\HieuUngNhapNhay.cs",
+              "ToolTip": "D:\\Devil_112k\\No_0015_LTM\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\HieuUngNhapNhay.cs",
+              "RelativeToolTip": "Assets\\Scripts\\HieuUngNhapNhay.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-22T00:16:45.769Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
