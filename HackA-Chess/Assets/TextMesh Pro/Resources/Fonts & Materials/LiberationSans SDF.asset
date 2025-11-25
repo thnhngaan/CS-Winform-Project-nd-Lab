@@ -26,9 +26,16 @@ Material:
     serializedVersion: 3
     m_TexEnvs: []
     m_Ints: []
+<<<<<<< HEAD
     m_Floats: []
     m_Colors:
     - _FaceColor: {r: 1, g: 1, b: 1, a: 1}
+=======
+    m_Floats:
+    - _OutlineWidth: 0.15
+    m_Colors:
+    - _OutlineColor: {r: 0.1, g: 0.1, b: 0.1, a: 1}
+>>>>>>> 223bba7460bd0207686305d6544df4d31541379b
   m_BuildTextureStacks: []
   m_AllowLocking: 1
 --- !u!114 &11400000

@@ -171,7 +171,7 @@ public class RegisterUI : MonoBehaviour
     // Gửi dữ liệu TCP
     private async Task<string> SendRegisterRequestAsync(string username, string hashedPassword, string email, string fullname, string sdt)
     {
-        const string serverIp = "10.32.87.236";// / chỉnh sửa IP server nha, để người chơi nhập
+        const string serverIp = "10.45.57.177";// / chỉnh sửa IP server nha, để người chơi nhập
         const int serverPort = 8080;
 
         using (TcpClient client = new TcpClient())

@@ -252,3 +252,13 @@ obj/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Ignore build + VS folders inside HackA-Chess(Server)
+HackA-Chess(Server)/bin/
+HackA-Chess(Server)/obj/
+HackA-Chess(Server)/.vs/
+
+# Ignore local user/project files for the server
+HackA-Chess(Server)/*.csproj.user
+HackA-Chess(Server)/*.suo
+HackA-Chess(Server)/*.user
