@@ -80,7 +80,6 @@ public class MovePlate : MonoBehaviour // Hàm hiện bước đi
                 gameController.SetPosition(rook);
             }
         }
-
         gameController.SetPositionEmpty(cm.GetXBoard(), cm.GetYBoard());
         cm.SetXBoard(matrixX);
         cm.SetYBoard(matrixY);

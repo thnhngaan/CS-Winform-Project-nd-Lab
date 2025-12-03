@@ -1,5 +1,4 @@
-﻿using Microsoft.Data.SqlClient;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -8,10 +7,13 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Data.SqlClient;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace HackA_Chess_Server_
 {
@@ -64,14 +66,14 @@ namespace HackA_Chess_Server_
             return false;
         }
 
-        private void AddUsertoDatabase(string username, string password, string email, string fullname, string sdt)
+        private void AddUsertoDatabase(string username, string password, string email, string fullname, string sdt,int elo=1200,int totalwin=0,int totaldraw=0,int totalloss=0,string AVATAR="")
         {
             try
             {
                 using (SqlConnection conn = Connection.GetSqlConnection())
                 {
                     conn.Open();
-                    string query = "INSERT INTO UserDB (USERNAME, PASSWORDHASH, EMAIL, PHONE, FULLNAME) VALUES (@user, @pass, @mail, @phone, @name)";
+                    string query = "INSERT INTO UserDB (USERNAME, PASSWORDHASH, EMAIL, PHONE, FULLNAME, ELO, TOTALWIN, TOTALDRAW, TOTALLOSS, AVATAR) VALUES (@user, @pass, @mail, @phone, @name, @point, @win, @draw, @loss, @avatar)";
                     using (SqlCommand cmd = new SqlCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@user", username);
@@ -79,6 +81,11 @@ namespace HackA_Chess_Server_
                         cmd.Parameters.AddWithValue("@mail", email);
                         cmd.Parameters.AddWithValue("@name", fullname);
                         cmd.Parameters.AddWithValue("@phone", sdt);
+                        cmd.Parameters.AddWithValue("@point", elo);
+                        cmd.Parameters.AddWithValue("@win", totalwin);
+                        cmd.Parameters.AddWithValue("@draw", totaldraw);
+                        cmd.Parameters.AddWithValue("@loss", totalloss);
+                        cmd.Parameters.AddWithValue("@avatar", AVATAR);
 
                         cmd.ExecuteNonQuery();
                     }
@@ -172,6 +179,11 @@ namespace HackA_Chess_Server_
                                 AppendText($"Client {clientEP} đăng nhập thành công.");
                                 break;
                             }
+                            else
+                            {
+                                AppendText($"Client {clientEP} đăng nhập thất bại, đóng kết nối.");
+                                return; 
+                            }
                         }
                         if (parts[0] == "REGISTER") //register
                         {
@@ -194,7 +206,7 @@ namespace HackA_Chess_Server_
                                 response = "Register failed";
                             else
                             {
-                                AddUsertoDatabase(Username, Password, Email, Fullname, Sdt);
+                                AddUsertoDatabase(Username, Password, Email, Fullname, Sdt,1200,0,0,0,"Avatar/icons8-avatar-50");
                                 response = "Register success";
                             }
 
@@ -202,6 +214,18 @@ namespace HackA_Chess_Server_
                             await stream.WriteAsync(responsebytes, 0, responsebytes.Length);
 
                             AppendText($"Trạng thái đăng ký của client ({clientEP}): {response}");
+
+                            if (!isUsernameExist)
+                            {
+                                isLogin = true;
+                                AppendText($"Client {clientEP} đăng ký thành công.");
+                                return;
+                            }
+                            else
+                            {
+                                AppendText($"Client {clientEP} đăng ký thất bại, đóng kết nối.");
+                                return;
+                            }
                         }
                     }
                     while (client.Connected) //còn vòng while này dành cho các tác vụ khác khi đã login vào server và nó sẽ giữ connected cho đến khi logout
@@ -216,6 +240,16 @@ namespace HackA_Chess_Server_
                             byte[] responsebytes = Encoding.UTF8.GetBytes(response);
                             await stream.WriteAsync(responsebytes, 0, responsebytes.Length);
                             return;
+                        }
+                        if(parts[0] == "GETINFO")
+                        {
+                            string username = parts[1];
+                            //truy vấn sql từ username
+                            string response = GetUserInfoFromDatabase(username);
+
+                            //gửi về client
+                            byte[] data = Encoding.UTF8.GetBytes(response);
+                            await stream.WriteAsync(data, 0, data.Length);
                         }
                         //và vô vàn tác vụ khác quăng dô đây hết nha mấy môm 
                     }
@@ -235,6 +269,52 @@ namespace HackA_Chess_Server_
                 UpdateClientList();
                 client.Close();
             }
+        }
+        #endregion
+
+        #region Lấy info user từ database
+        private string GetUserInfoFromDatabase(string username)
+        {
+            string response = "GETINFO|NOT_FOUND"; //response mặc định
+
+            try
+            {
+                using (SqlConnection conn = Connection.GetSqlConnection())
+                {
+                    conn.Open();
+                    string query = @"
+                SELECT FULLNAME, ELO, TOTALWIN, TOTALDRAW, TOTALLOSS, AVATAR
+                FROM UserDB
+                WHERE USERNAME = @user";
+
+                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@user", username);
+
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                string fullName = reader["FULLNAME"].ToString();
+                                int elo = reader["ELO"] != DBNull.Value ? Convert.ToInt32(reader["ELO"]) : 1200;
+                                int totalWin = reader["TOTALWIN"] != DBNull.Value ? Convert.ToInt32(reader["TOTALWIN"]) : 0;
+                                int totalDraw = reader["TOTALDRAW"] != DBNull.Value ? Convert.ToInt32(reader["TOTALDRAW"]) : 0;
+                                int totalLoss = reader["TOTALLOSS"] != DBNull.Value ? Convert.ToInt32(reader["TOTALLOSS"]) : 0;
+                                string avatar = reader["AVATAR"] != DBNull.Value ? reader["AVATAR"].ToString() : "";
+
+                                //gửi response về cho client
+                                response = $"GETINFO|{fullName}|{elo}|{totalWin}|{totalDraw}|{totalLoss}|{avatar}";
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("DB Error GetUserInfo: " + ex.Message);
+                response = "GETINFO|ERROR";
+            }
+            return response;
         }
         #endregion
 
