@@ -1,11 +1,12 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Net.Sockets;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
-using System.Net.Sockets;
+using UnityEditor.Experimental.GraphView;
+using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class RegisterUI : MonoBehaviour
 {
@@ -167,26 +168,27 @@ public class RegisterUI : MonoBehaviour
             return sb.ToString();
         }
     }
-
+    const string IPServer = "127.0.0.1";
+    const int PortServer = 8080;
     // Gửi dữ liệu TCP
     private async Task<string> SendRegisterRequestAsync(string username, string hashedPassword, string email, string fullname, string sdt)
     {
-        const string serverIp = "10.45.57.177";// / chỉnh sửa IP server nha, để người chơi nhập
-        const int serverPort = 8080;
-
-        using (TcpClient client = new TcpClient())
+        string message = $"REGISTER|{username}|{hashedPassword}|{email}|{fullname}|{sdt}";
+        try
         {
-            await client.ConnectAsync(serverIp, serverPort);
-            using (var stream = client.GetStream())
-            {
-                string request = $"REGISTER|{username}|{hashedPassword}|{email}|{fullname}|{sdt}";
-                byte[] data = Encoding.UTF8.GetBytes(request);
-                await stream.WriteAsync(data, 0, data.Length);
-
-                byte[] buffer = new byte[1024];
-                int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
-                return Encoding.UTF8.GetString(buffer, 0, bytesRead).Trim();
-            }
+            bool ok = await NetworkClient.Instance.ConnectAsync(IPServer, PortServer);
+            if (!ok)
+                return "Lỗi: Không kết nối được tới server.";
+            await NetworkClient.Instance.SendAsync(message);
+            string response = await NetworkClient.Instance.ReceiveOnceAsync();
+            if (response == null)
+                return "Lỗi: Không nhận được dữ liệu từ server.";
+            return response;
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"TCP Error (IP {IPServer}) (Port {PortServer}): {ex.Message}");
+            return $"Lỗi: {ex.Message}";
         }
     }
 }

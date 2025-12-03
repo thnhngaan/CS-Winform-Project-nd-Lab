@@ -20,7 +20,7 @@ namespace Assets.Scripts
         [Header("Next Scene / Panel")]
         public string NextScene;
 
-        private string serverIP = "10.45.57.177";// chỉnh sửa IP server nha, để người chơi nhập
+        private string serverIP = "127.0.0.1";// chỉnh sửa IP server nha, để người chơi nhập
         private int Port = 8080;
 
         //hàm event ấn nút đăng nhập nè
@@ -58,20 +58,18 @@ namespace Assets.Scripts
         {
             try
             {
-                using (TcpClient client = new TcpClient())
+                bool ok = await NetworkClient.Instance.ConnectAsync(IP, Port);
+                if (!ok)
                 {
-                    await client.ConnectAsync(IP, Port);
-                    using (NetworkStream stream = client.GetStream())
-                    {
-                        byte[] data = Encoding.UTF8.GetBytes(message);
-                        await stream.WriteAsync(data, 0, data.Length);
-
-                        byte[] buffer = new byte[2048];
-                        int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
-                        string response = Encoding.UTF8.GetString(buffer, 0, bytesRead).Trim();
-                        return response;
-                    }
+                    return "Lỗi: Không kết nối được tới server.";
                 }
+                await NetworkClient.Instance.SendAsync(message);
+                string response = await NetworkClient.Instance.ReceiveOnceAsync();
+                if (response == null)
+                {
+                    return "Lỗi: Không nhận được dữ liệu từ server.";
+                }
+                return response;
             }
             catch (System.Exception ex)
             {
@@ -94,6 +92,7 @@ namespace Assets.Scripts
             result = result.Trim();
             if (result.Equals("Login success", System.StringComparison.OrdinalIgnoreCase))
             {
+                Assets.Scripts.UserSession.CurrentUsername = username;
                 ShowMessage("Đăng nhập thành công!");
                 await Task.Delay(1000);
                 SceneManager.LoadScene(NextScene);

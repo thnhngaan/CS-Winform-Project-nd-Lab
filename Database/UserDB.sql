@@ -1,20 +1,26 @@
 ﻿
 -- Tạo Database
-CREATE DATABASE UserDB;
+CREATE DATABASE HackAChessDB;
 GO
 
-USE UserDB;
+USE HackAChessDB;
 GO
 
 -- USERDB (DB Login - Register)
 CREATE TABLE UserDB 
 (
     Username VARCHAR(50) PRIMARY KEY NOT NULL,
-    Fullname VARCHAR(100),
-    PasswordHash VARCHAR(255),
-    Email VARCHAR(100),
-    Phone VARCHAR(20)
+    Fullname NVARCHAR(100) NOT NULL,
+    PasswordHash VARCHAR(255) NOT NULL,
+    Email VARCHAR(100) NOT NULL,
+    Phone VARCHAR(10) NOT NULL,
+    Elo INT,
+    TotalWin INT,
+    TotalDraw INT,
+    TotalLoss INT,
+    Avatar NVARCHAR(255)
 );
+
 GO
 
 -- SESSION (DB các phiên đăng nhập - đăng xuất)
@@ -74,3 +80,4 @@ CREATE TABLE MatchMoveDB (
     FOREIGN KEY (MatchID) REFERENCES MatchDB(MatchID)
 );
 
+DROP DATABASE UserDB
