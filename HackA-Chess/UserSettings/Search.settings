@@ -9,10 +9,7 @@ onBoardingDoNotAskAgain = true
 showPackageIndexes = false
 showStatusBar = false
 scopes = {
-	"last_search.66F56946" = "sorting layer"
-	"OpenInspectorPreview.66F56946" = "0"
-	"currentGroup.66F56946" = "settings"
-	"picker_window_position_offset.00000000" = "26.40002;275.2;320;550.4"
+	"picker_window_position_offset.00000000" = "115;89;320;550"
 	"picker_visibility_flags.00000000" = "0"
 	"picker_item_size.00000000" = "1"
 	"picker_inspector.00000000" = "0"
@@ -72,8 +69,6 @@ providers = {
 objectSelectors = {
 }
 recentSearches = [
-	"sorting laer"
-	"sỏ"
 ]
 searchItemFavorites = [
 ]
@@ -88,4 +83,4 @@ helperWidgetCurrentArea = "all"
 disabledIndexers = ""
 minIndexVariations = 2
 findProviderIndexHelper = true
-itemIconSize = 1
+itemIconSize = 32

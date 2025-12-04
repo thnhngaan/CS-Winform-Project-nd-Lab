@@ -52,7 +52,6 @@
             label3.Size = new Size(84, 28);
             label3.TabIndex = 5;
             label3.Text = "SERVER";
-            label3.Click += label3_Click;
             // 
             // rtb_clientsconnection
             // 
@@ -62,7 +61,6 @@
             rtb_clientsconnection.Size = new Size(248, 430);
             rtb_clientsconnection.TabIndex = 0;
             rtb_clientsconnection.Text = "";
-            rtb_clientsconnection.TextChanged += rtb_clientsconnection_TextChanged;
             // 
             // label1
             // 
@@ -73,7 +71,6 @@
             label1.Size = new Size(165, 20);
             label1.TabIndex = 1;
             label1.Text = "Các Client đang kết nối:";
-            label1.Click += label1_Click;
             // 
             // Server
             // 

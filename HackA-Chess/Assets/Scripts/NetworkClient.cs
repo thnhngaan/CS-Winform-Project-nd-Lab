@@ -1,3 +1,4 @@
+﻿using System;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,6 +10,8 @@ public class NetworkClient
 
     private TcpClient _client;
     private NetworkStream _stream;
+
+    public bool IsConnected => _client != null && _client.Connected;
 
     public async Task<bool> ConnectAsync(string ip, int port)
     {

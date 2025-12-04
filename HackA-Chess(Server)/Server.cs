@@ -12,8 +12,10 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using HackA_Chess_Server_;
 using Microsoft.Data.SqlClient;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
 namespace HackA_Chess_Server_
 {
@@ -66,7 +68,7 @@ namespace HackA_Chess_Server_
             return false;
         }
 
-        private void AddUsertoDatabase(string username, string password, string email, string fullname, string sdt,int elo=1200,int totalwin=0,int totaldraw=0,int totalloss=0,string AVATAR="")
+        private void AddUsertoDatabase(string username, string password, string email, string fullname, string sdt, int elo = 1200, int totalwin = 0, int totaldraw = 0, int totalloss = 0, string AVATAR = "")
         {
             try
             {
@@ -134,6 +136,7 @@ namespace HackA_Chess_Server_
             TcpClient client = obj as TcpClient;
             if (client == null) return;
             IPEndPoint clientEP = client.Client.RemoteEndPoint as IPEndPoint;
+            string currentUsername = null;
             lock (connectedClients)
             {
                 connectedClients[clientEP] = clientEP.Address;
@@ -176,13 +179,14 @@ namespace HackA_Chess_Server_
                             if (status)
                             {
                                 isLogin = true;
+                                currentUsername = username;
                                 AppendText($"Client {clientEP} đăng nhập thành công.");
                                 break;
                             }
                             else
                             {
                                 AppendText($"Client {clientEP} đăng nhập thất bại, đóng kết nối.");
-                                return; 
+                                return;
                             }
                         }
                         if (parts[0] == "REGISTER") //register
@@ -206,7 +210,8 @@ namespace HackA_Chess_Server_
                                 response = "Register failed";
                             else
                             {
-                                AddUsertoDatabase(Username, Password, Email, Fullname, Sdt,1200,0,0,0,"Avatar/icons8-avatar-50");
+                                AddUsertoDatabase(Username, Password, Email, Fullname, Sdt, 1200, 0, 0, 0, "Avatar/icons8-avatar-50");
+                                currentUsername = Username;
                                 response = "Register success";
                             }
 
@@ -241,7 +246,7 @@ namespace HackA_Chess_Server_
                             await stream.WriteAsync(responsebytes, 0, responsebytes.Length);
                             return;
                         }
-                        if(parts[0] == "GETINFO")
+                        if (parts[0] == "GETINFO")
                         {
                             string username = parts[1];
                             //truy vấn sql từ username
@@ -251,6 +256,122 @@ namespace HackA_Chess_Server_
                             byte[] data = Encoding.UTF8.GetBytes(response);
                             await stream.WriteAsync(data, 0, data.Length);
                         }
+                        if (parts[0] == "CREATE")
+                        {
+                            if (currentUsername == null)
+                            {
+                                string resp = "Create fail"; //phải login vào rồi mới đc tạo phòng (có thể bỏ dòng này để test nha)
+                                byte[] respBytes = Encoding.UTF8.GetBytes(resp);
+                                await stream.WriteAsync(respBytes, 0, respBytes.Length);
+                                continue;
+                            }
+
+                            string status = "public";
+                            if (parts.Length >= 2)
+                                status = parts[1].Trim().ToLower();
+
+                            string roomId = CreateRoom(currentUsername, status);
+                            string response;
+                            if (roomId != null)
+                            {
+                                response = roomId;
+                            }
+                            else
+                            {
+                                response = "Create fail";
+                            }
+                            AppendText($"Server trả về ID phòng vừa tạo {response}");
+                            byte[] respData = Encoding.UTF8.GetBytes(response);
+                            await stream.WriteAsync(respData, 0, respData.Length);
+                            continue;
+                        }
+                        if (parts[0] == "ListRoom")
+                        {
+                            var rooms = GetPublicRooms();  // giờ trả về RoomID, NumberPlayer, HostUsername, HostElo
+                            var sb = new StringBuilder();
+                            foreach (var room in rooms)
+                            {
+                                //định dạng: RoomID,NumberPlayer,HostUsername,HostElo
+                                sb.AppendLine($"{room.RoomID},{room.NumberPlayer},{room.HostUsername},{room.HostElo}");
+                            }
+
+                            string response = sb.ToString();  //có thể rỗng("") nếu không có phòng nào
+
+                            AppendText("[SERVER] Gửi danh sách phòng:\n" + (string.IsNullOrEmpty(response) ? "(trống)" : response));
+
+                            byte[] respData = Encoding.UTF8.GetBytes(response);
+                            await stream.WriteAsync(respData, 0, respData.Length);
+                            continue;
+                        }
+                        if (parts[0] == "Join")
+                        {
+                            // Kiểm tra format gói tin
+                            if (parts.Length < 2)
+                            {
+                                string resp = "Join fail";
+                                byte[] respBytes = Encoding.UTF8.GetBytes(resp);
+                                await stream.WriteAsync(respBytes, 0, respBytes.Length);
+
+                                AppendText($"Client {clientEP} gửi msg Join không hợp lệ: {msg}");
+                                continue;
+                            }
+
+                            string roomId = parts[1].Trim();
+
+                            //ID (6 chữ số)
+                            if (roomId.Length != 6 || !roomId.All(char.IsDigit))
+                            {
+                                string resp = "Join fail";
+                                byte[] respBytes = Encoding.UTF8.GetBytes(resp);
+                                await stream.WriteAsync(respBytes, 0, respBytes.Length);
+
+                                AppendText($"Client {clientEP} gửi msg Join với RoomID không hợp lệ: {roomId}");
+                                continue;
+                            }
+
+                            bool result = TryJoinRoom(roomId, currentUsername);
+                            string response = result ? "Join success" : "Join fail";
+
+                            AppendText($"Client {clientEP} Join room {roomId}: {response}");
+
+                            byte[] data = Encoding.UTF8.GetBytes(response);
+                            await stream.WriteAsync(data, 0, data.Length);
+                            continue;
+                        }
+                        if (parts[0] == "JoinID")
+                        {
+                            if (parts.Length < 2)
+                            {
+                                string resp = "JoinID fail";
+                                byte[] respBytes = Encoding.UTF8.GetBytes(resp);
+                                await stream.WriteAsync(respBytes, 0, respBytes.Length);
+
+                                AppendText($"Client {clientEP} gửi msg JoinID không hợp lệ: {msg}");
+                                continue;
+                            }
+
+                            string roomId = parts[1].Trim();
+
+                            if (roomId.Length != 6 || !roomId.All(char.IsDigit)) //ID
+                            {
+                                string resp = "JoinID fail";
+                                byte[] respBytes = Encoding.UTF8.GetBytes(resp);
+                                await stream.WriteAsync(respBytes, 0, respBytes.Length);
+
+                                AppendText($"Client {clientEP} gửi msg JoinID với RoomID không hợp lệ: {roomId}");
+                                continue;
+                            }
+
+                            bool result = TryJoinRoom(roomId, currentUsername);
+                            string response = result ? "JoinID success" : "JoinID fail";
+
+                            AppendText($"Client {clientEP} JoinID room {roomId}: {response}");
+
+                            byte[] data = Encoding.UTF8.GetBytes(response);
+                            await stream.WriteAsync(data, 0, data.Length);
+                            continue;
+                        }
+
                         //và vô vàn tác vụ khác quăng dô đây hết nha mấy môm 
                     }
                 }
@@ -349,31 +470,106 @@ namespace HackA_Chess_Server_
                 }
             }
         }
+
+        #endregion
+        #region Xử lí room
+
+        private static readonly Random _rand = new();
+
+        public static string CreateRoom(string hostUsername, string status)
+        {
+            bool isPublic = status.Equals("public", StringComparison.OrdinalIgnoreCase);
+
+            using (var conn = Connection.GetSqlConnection())
+            {
+                conn.Open();
+
+                for (int attempts = 0; attempts < 50; attempts++)
+                {
+                    string roomId = _rand.Next(0, 1_000_000).ToString("D6");
+
+                    string sql = @"INSERT INTO ROOM (RoomID, UsernameHost, NumberPlayer, RoomIsFull, IsPublic, IsClosed) VALUES (@id, @host, @num, 0, @isPublic, 0);";
+
+                    using (var cmd = new SqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", roomId);
+                        cmd.Parameters.AddWithValue("@host", hostUsername);
+                        cmd.Parameters.AddWithValue("@num", 1);          // host vào là 1 player
+                        cmd.Parameters.AddWithValue("@isPublic", isPublic ? 1 : 0);
+
+                        try
+                        {
+                            int rows = cmd.ExecuteNonQuery();
+                            if (rows == 1)
+                                return roomId;
+                        }
+                        catch (SqlException ex)
+                        {
+                            // nếu trùng PK RoomID thì thử lại vòng tiếp theo
+                            if (ex.Number != 2627) // PK violation
+                                throw;
+                        }
+                    }
+                }
+
+                return null;
+            }
+        }
+
+
+        public static List<(string RoomID, int NumberPlayer, string HostUsername, int HostElo)> GetPublicRooms()
+        {
+            var list = new List<(string, int, string, int)>();
+
+            using (var conn = Connection.GetSqlConnection())
+            {
+                conn.Open();
+                string sql = @"
+            SELECT  R.RoomID, R.NumberPlayer, R.UsernameHost, U.ELO
+            FROM ROOM R
+            JOIN UserDB U ON U.USERNAME = R.UsernameHost
+            WHERE R.IsPublic = 1 AND R.IsClosed = 0 AND R.RoomIsFull = 0;";
+
+                using (var cmd = new SqlCommand(sql, conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string roomId = reader["RoomID"].ToString();
+                        int numberPlayer = Convert.ToInt32(reader["NumberPlayer"]);
+                        string hostUsername = reader["UsernameHost"].ToString();
+                        int hostElo = reader["ELO"] != DBNull.Value ? Convert.ToInt32(reader["ELO"]) : 1200;
+
+                        list.Add((roomId, numberPlayer, hostUsername, hostElo));
+                    }
+                }
+            }
+
+            return list;
+        }
+
+
+
+        public static bool TryJoinRoom(string roomId, string clientUsername)
+        {
+            using (var conn = Connection.GetSqlConnection())
+            {
+                conn.Open();
+                string sql = @"UPDATE ROOM
+                             SET UsernameClient = @client, NumberPlayer = NumberPlayer + 1, RoomIsFull = CASE WHEN NumberPlayer + 1 >= 2 THEN 1 ELSE 0 END
+                             WHERE RoomID = @id AND IsClosed = 0 AND RoomIsFull = 0 AND NumberPlayer < 2;";
+
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@client", clientUsername);
+                    cmd.Parameters.AddWithValue("@id", roomId);
+
+                    int rows = cmd.ExecuteNonQuery();
+                    return rows == 1;
+                }
+            }
+        }
         #endregion
 
-        private void tb_ipserver_TextChanged(object sender, EventArgs e)
-        {
-
-        }
-
-        private void label2_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void label1_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void rtb_clientsconnection_TextChanged(object sender, EventArgs e)
-        {
-
-        }
-
-        private void label3_Click(object sender, EventArgs e)
-        {
-
-        }
     }
 }

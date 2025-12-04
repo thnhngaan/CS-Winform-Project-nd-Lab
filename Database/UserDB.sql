@@ -35,12 +35,18 @@ CREATE TABLE SessionDB
 );
 
 -- ROOM (DB các phòng chơi)
-CREATE TABLE RoomDB 
-(
-    RoomID INT IDENTITY PRIMARY KEY,
-    RoomName VARCHAR(50),
-    MaxPlayers INT DEFAULT 2,
-    CreatedAt DATETIME DEFAULT GETDATE()
+USE HackAChessDB
+CREATE TABLE ROOM (
+    RoomID       CHAR(6)      NOT NULL PRIMARY KEY,         
+    UsernameHost VARCHAR(50)  NOT NULL,                    
+    UsernameClient VARCHAR(50) NULL,                        
+    NumberPlayer TINYINT      NOT NULL DEFAULT 1,          
+    RoomIsFull   BIT          NOT NULL DEFAULT 0,           
+    IsPublic     BIT          NOT NULL DEFAULT 1,           
+    CreatedAt    DATETIME     NOT NULL DEFAULT GETDATE(),
+    IsClosed     BIT          NOT NULL DEFAULT 0,           
+    FOREIGN KEY (UsernameHost) REFERENCES UserDB(Username),
+    FOREIGN KEY (UsernameClient) REFERENCES UserDB(Username)
 );
 
 -- ROOMPARTICIPANT (DB user tham gia phòng)
