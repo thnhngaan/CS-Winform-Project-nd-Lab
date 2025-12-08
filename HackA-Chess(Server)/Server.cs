@@ -371,6 +371,39 @@ namespace HackA_Chess_Server_
                             await stream.WriteAsync(data, 0, data.Length);
                             continue;
                         }
+                        if (parts[0] == "GET_RANK")
+                        {
+                            int page = 1;
+                            int pageSize = 10;
+
+                            if (parts.Length >= 2 && int.TryParse(parts[1], out int p))
+                                page = p;
+                            if (parts.Length >= 3 && int.TryParse(parts[2], out int ps))
+                                pageSize = ps;
+
+                            AppendText($"Client {clientEP} yêu cầu bảng xếp hạng: page={page}, pageSize={pageSize}");
+
+                            int totalCount;
+                            var entries = GetLeaderboardPage(page, pageSize, out totalCount);
+
+                            //cấu trúc response: RANK_PAGE|page|totalCount|user,fullname,elo,win,draw,loss;...
+                            var sb = new StringBuilder();
+                            foreach (var e in entries)
+                            {
+                                // tránh ký tự '|' trong fullname nếu có
+                                string safeFullname = e.Fullname?.Replace("|", "/") ?? "";
+                                if(currentUsername==e.Username) sb.Append(e.Username + "(Me)").Append(',').Append(safeFullname).Append(',').Append(e.Elo).Append(',').Append(e.TotalWin).Append(',').Append(e.TotalDraw).Append(',').Append(e.TotalLoss).Append(';');
+                                else sb.Append(e.Username).Append(',').Append(safeFullname).Append(',').Append(e.Elo).Append(',').Append(e.TotalWin).Append(',').Append(e.TotalDraw).Append(',').Append(e.TotalLoss).Append(';');
+                            }
+                            string dataPart = sb.ToString();
+                            string response = $"RANK_PAGE|{page}|{totalCount}|{dataPart}";
+
+                            byte[] respBytes = Encoding.UTF8.GetBytes(response);
+                            await stream.WriteAsync(respBytes, 0, respBytes.Length);
+
+                            AppendText($"[SERVER] Gửi leaderboard: page={page}, totalCount={totalCount}");
+                            continue;
+                        }
 
                         //và vô vàn tác vụ khác quăng dô đây hết nha mấy môm 
                     }
@@ -571,5 +604,62 @@ namespace HackA_Chess_Server_
         }
         #endregion
 
+
+        #region Raking
+        private static List<(string Username, string Fullname, int Elo, int TotalWin, int TotalDraw, int TotalLoss)> GetLeaderboardPage(int page, int pageSize, out int totalCount)
+        {
+            var list = new List<(string, string, int, int, int, int)>();
+            totalCount = 0;
+
+            if (page < 1) page = 1;
+            if (pageSize <= 0) pageSize = 10;
+
+            int offset = (page - 1) * pageSize;
+
+            using (var conn = Connection.GetSqlConnection())
+            {
+                conn.Open();
+
+                //lấy tổng số user  có trong server
+                using (var cmdCount = new SqlCommand("SELECT COUNT(*) FROM UserDB;", conn))
+                {
+                    totalCount = (int)cmdCount.ExecuteScalar();
+                }
+
+                if (totalCount == 0)
+                    return list;
+
+                //lấy 1 trang user theo 1 trang
+                string sql = @"SELECT Username, Fullname, Elo, TotalWin, TotalDraw, TotalLoss
+                               FROM UserDB
+                               ORDER BY Elo DESC, TotalWin DESC, Username ASC
+                               OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY;";
+
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@offset", offset);
+                    cmd.Parameters.AddWithValue("@pageSize", pageSize);
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                           
+                            string username = reader["Username"].ToString();
+                            string fullname = reader["Fullname"].ToString();
+                            int elo = reader["Elo"] != DBNull.Value ? Convert.ToInt32(reader["Elo"]) : 1200;
+                            int win = reader["TotalWin"] != DBNull.Value ? Convert.ToInt32(reader["TotalWin"]) : 0;
+                            int draw = reader["TotalDraw"] != DBNull.Value ? Convert.ToInt32(reader["TotalDraw"]) : 0;
+                            int loss = reader["TotalLoss"] != DBNull.Value ? Convert.ToInt32(reader["TotalLoss"]) : 0;
+
+                            list.Add((username, fullname, elo, win, draw, loss));
+                        }
+                    }
+                }
+            }
+
+            return list;
+        }
+        #endregion
     }
 }

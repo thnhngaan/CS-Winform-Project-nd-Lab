@@ -2,11 +2,9 @@
 using System.Text;
 using System.Threading.Tasks;
 using Assets.Scripts;
-using UnityEditor.PackageManager;
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
-using UnityEditor.Build.Reporting;
 
 namespace Assets.Scripts
 {
