@@ -12,7 +12,7 @@ public class GameNetworkListener : MonoBehaviour
 
     private bool _listening;
 
-    private void Start()
+    private void Awake()
     {
         if (game == null)
             game = FindObjectOfType<Game>();
@@ -39,17 +39,15 @@ public class GameNetworkListener : MonoBehaviour
                 Debug.LogWarning("[GameNet] mất kết nối hoặc không có dữ liệu");
                 break;
             }
-
-            UnityMainThreadDispatcher.Instance.Enqueue(() =>
-            {
-                HandleServerMessage(msg);
-            });
+            HandleServerMessage(msg);
         }
     }
 
     private void HandleServerMessage(string msg)
     {
+        
         Debug.Log("[GameNet] Received: " + msg);
+        
         string[] parts = msg.Split('|');
         if (parts.Length == 0) return;
 

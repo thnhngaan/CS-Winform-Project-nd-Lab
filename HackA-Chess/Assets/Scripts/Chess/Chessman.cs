@@ -59,14 +59,20 @@ public class Chessman : MonoBehaviour // hàm nước đi của cờ
         float x = xBoard;
         float y = yBoard;
 
+        // Nếu client là bên đen → đảo hệ tọa độ
+        if (Assets.Scripts.GameSession.MyColor == "black")
+        {
+            x = 7 - x;
+            y = 7 - y;
+        }
+
         x *= 1.25f;
         y *= 1.25f;
 
         x += -4.37f;
         y += -4.37f;
 
-        this.transform.position = new Vector3(x, y, -1.0f);
-
+        transform.position = new Vector3(x, y, -1.0f);
     }
 
     public int GetXBoard() { return xBoard; }

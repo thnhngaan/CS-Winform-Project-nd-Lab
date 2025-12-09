@@ -69,10 +69,8 @@ public class WaitingRoomListener : MonoBehaviour
             bool isGameStart = msg.StartsWith("GAME_START", StringComparison.Ordinal);
 
             // Đẩy xử lý về main thread
-            UnityMainThreadDispatcher.Instance.Enqueue(() =>
-            {
-                HandleServerMessage(msg);
-            });
+            HandleServerMessage(msg);
+
 
             // Nếu đã nhận GAME_START rồi thì NÓI TẠM BIỆT, không đọc thêm nữa.
             if (isGameStart)

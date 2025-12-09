@@ -1344,6 +1344,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Game
   chesspiece: {fileID: 563283055211031728, guid: c4b6da0d16d308b4a82bf147f6773a5a, type: 3}
+  boardRoot: {fileID: 1437723509}
   infoText: {fileID: 0}
   gameOverUI: {fileID: 1161149030}
 --- !u!1 &1302093740

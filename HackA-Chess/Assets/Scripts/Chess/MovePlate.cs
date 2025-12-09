@@ -147,6 +147,23 @@ public class MovePlate : MonoBehaviour // Hàm hiện bước đi
     {
         matrixX = x;
         matrixY = y;
+
+        float fx = x;
+        float fy = y;
+
+        if (Assets.Scripts.GameSession.MyColor == "black")
+        {
+            fx = 7 - fx;
+            fy = 7 - fy;
+        }
+
+        fx *= 1.25f;
+        fy *= 1.25f;
+
+        fx += -4.37f;
+        fy += -4.37f;
+
+        transform.position = new Vector3(fx, fy, -1.0f);
     }
 
     public void SetReference(GameObject obj)
