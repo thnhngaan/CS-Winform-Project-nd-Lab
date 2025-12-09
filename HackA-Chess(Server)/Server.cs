@@ -181,6 +181,11 @@ namespace HackA_Chess_Server_
                                 isLogin = true;
                                 currentUsername = username;
                                 AppendText($"Client {clientEP} đăng nhập thành công.");
+
+                                lock (OnlineUsers)
+                                {
+                                    OnlineUsers[currentUsername] = client; // Lưu client theo username
+                                }
                                 break;
                             }
                             else
@@ -336,8 +341,11 @@ namespace HackA_Chess_Server_
 
                             byte[] data = Encoding.UTF8.GetBytes(response);
                             await stream.WriteAsync(data, 0, data.Length);
+
+                            // ❌ KHÔNG gọi StartGameForRoomAsync ở đây nữa
                             continue;
                         }
+
                         if (parts[0] == "JoinID")
                         {
                             if (parts.Length < 2)
@@ -369,10 +377,95 @@ namespace HackA_Chess_Server_
 
                             byte[] data = Encoding.UTF8.GetBytes(response);
                             await stream.WriteAsync(data, 0, data.Length);
+
+                            // ❌ KHÔNG gọi StartGameForRoomAsync ở đây nữa
+                            continue;
+                        }
+                        if (parts[0] == "READY")
+                        {
+                            if (parts.Length < 2)
+                            {
+                                AppendText($"Client {clientEP} gửi READY không hợp lệ: {msg}");
+                                continue;
+                            }
+
+                            string roomId = parts[1].Trim();
+                            AppendText($"[READY] {currentUsername} ready in room {roomId}");
+
+                            // Gọi hàm này: nó tự check trong DB xem room đã đủ 2 người chưa
+                            await StartGameForRoomAsync(roomId);
+                            continue;
+                        }
+                        if (parts[0] == "MOVE")
+                        {
+                            // MOVE|roomId|fromX|fromY|toX|toY
+                            if (parts.Length < 6)
+                                continue;
+
+                            string roomId = parts[1];
+                            string opponent = GetOpponentOf(roomId, currentUsername);
+                            if (string.IsNullOrEmpty(opponent))
+                                continue;
+
+                            TcpClient oppClient = null;
+                            lock (OnlineUsers)
+                            {
+                                OnlineUsers.TryGetValue(opponent, out oppClient);
+                            }
+
+                            if (oppClient != null)
+                            {
+                                try
+                                {
+                                    string forward = $"OPP_MOVE|{roomId}|{parts[2]}|{parts[3]}|{parts[4]}|{parts[5]}";
+                                    byte[] data = Encoding.UTF8.GetBytes(forward);
+                                    await oppClient.GetStream().WriteAsync(data, 0, data.Length);
+                                }
+                                catch (Exception ex)
+                                {
+                                    AppendText($"[MOVE] Lỗi gửi cho {opponent}: {ex.Message}");
+                                }
+                            }
                             continue;
                         }
 
-                        //và vô vàn tác vụ khác quăng dô đây hết nha mấy môm 
+                        if (parts[0] == "GAME_OVER")
+                        {
+                            // GAME_OVER|roomId|winnerColor
+                            if (parts.Length < 3)
+                                continue;
+
+                            string roomId = parts[1];
+                            string winnerColor = parts[2];
+
+                            string opponent = GetOpponentOf(roomId, currentUsername);
+                            if (!string.IsNullOrEmpty(opponent))
+                            {
+                                TcpClient oppClient = null;
+                                lock (OnlineUsers)
+                                {
+                                    OnlineUsers.TryGetValue(opponent, out oppClient);
+                                }
+
+                                if (oppClient != null)
+                                {
+                                    try
+                                    {
+                                        string forward = $"GAME_OVER|{roomId}|{winnerColor}";
+                                        byte[] data = Encoding.UTF8.GetBytes(forward);
+                                        await oppClient.GetStream().WriteAsync(data, 0, data.Length);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        AppendText($"[GAME_OVER] Lỗi gửi cho {opponent}: {ex.Message}");
+                                    }
+                                }
+                            }
+
+                            // TODO: sau này update lịch sử đấu / ELO ở đây
+
+                            continue;
+                        }
                     }
                 }
             }
@@ -386,6 +479,13 @@ namespace HackA_Chess_Server_
                 lock (connectedClients)
                 {
                     connectedClients.Remove(clientEP);
+                }
+                if (currentUsername != null)
+                {
+                    lock (OnlineUsers)
+                    {
+                        OnlineUsers.Remove(currentUsername);
+                    }
                 }
                 UpdateClientList();
                 client.Close();
@@ -566,6 +666,123 @@ namespace HackA_Chess_Server_
 
                     int rows = cmd.ExecuteNonQuery();
                     return rows == 1;
+                }
+            }
+        }
+        #endregion
+
+        #region LAN 
+        // trong class Server
+        private static readonly Dictionary<string, TcpClient> OnlineUsers = new();
+
+        private async Task StartGameForRoomAsync(string roomId)
+        {
+            using (var conn = Connection.GetSqlConnection())
+            {
+                conn.Open();
+                string sql = @"
+SELECT UsernameHost, UsernameClient, NumberPlayer, RoomIsFull, IsClosed
+FROM ROOM
+WHERE RoomID = @id";
+
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", roomId);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (!reader.Read())
+                        {
+                            AppendText($"[GAME_START] Không tìm thấy room {roomId} trong DB.");
+                            return;
+                        }
+
+                        string host = reader["UsernameHost"]?.ToString();
+                        string clientUser = reader["UsernameClient"]?.ToString();
+                        int number = Convert.ToInt32(reader["NumberPlayer"]);
+                        bool isFull = Convert.ToBoolean(reader["RoomIsFull"]);
+                        bool isClosed = Convert.ToBoolean(reader["IsClosed"]);
+
+                        // Chỉ start khi đủ 2 người, full và chưa đóng
+                        if (number != 2 || !isFull || isClosed ||
+                            string.IsNullOrEmpty(host) || string.IsNullOrEmpty(clientUser))
+                        {
+                            AppendText($"[GAME_START] Room {roomId} chưa đủ điều kiện start.");
+                            return;
+                        }
+
+                        AppendText($"[GAME_START] Room {roomId} đủ 2 người: {host} vs {clientUser}");
+
+                        // Lấy TcpClient của 2 user
+                        TcpClient hostClient = null;
+                        TcpClient clientClient = null;
+                        lock (OnlineUsers)
+                        {
+                            OnlineUsers.TryGetValue(host, out hostClient);
+                            OnlineUsers.TryGetValue(clientUser, out clientClient);
+                        }
+
+                        if (hostClient != null)
+                        {
+                            try
+                            {
+                                var s = hostClient.GetStream();
+                                string msg = $"GAME_START|white|{roomId}|{clientUser}";
+                                byte[] data = Encoding.UTF8.GetBytes(msg);
+                                await s.WriteAsync(data, 0, data.Length);
+                            }
+                            catch (Exception ex)
+                            {
+                                AppendText($"[GAME_START] Lỗi gửi cho host {host}: {ex.Message}");
+                            }
+                        }
+                        else
+                        {
+                            AppendText($"[GAME_START] Không tìm thấy TcpClient của host {host}.");
+                        }
+
+                        if (clientClient != null)
+                        {
+                            try
+                            {
+                                var s = clientClient.GetStream();
+                                string msg = $"GAME_START|black|{roomId}|{host}";
+                                byte[] data = Encoding.UTF8.GetBytes(msg);
+                                await s.WriteAsync(data, 0, data.Length);
+                            }
+                            catch (Exception ex)
+                            {
+                                AppendText($"[GAME_START] Lỗi gửi cho client {clientUser}: {ex.Message}");
+                            }
+                        }
+                        else
+                        {
+                            AppendText($"[GAME_START] Không tìm thấy TcpClient của client {clientUser}.");
+                        }
+                    }
+                }
+            }
+        }
+
+        private string GetOpponentOf(string roomId, string currentUser)
+        {
+            using (var conn = Connection.GetSqlConnection())
+            {
+                conn.Open();
+                string sql = "SELECT UsernameHost, UsernameClient FROM ROOM WHERE RoomID = @id";
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", roomId);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (!reader.Read()) return null;
+
+                        string host = reader["UsernameHost"].ToString();
+                        string client = reader["UsernameClient"].ToString();
+
+                        if (currentUser == host) return client;
+                        if (currentUser == client) return host;
+                        return null;
+                    }
                 }
             }
         }

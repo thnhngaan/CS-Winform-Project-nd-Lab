@@ -1,15 +1,25 @@
-﻿using UnityEngine;
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using TMPro;
+using System.Threading.Tasks;
+using Assets.Scripts;
 
 public class Chessman : MonoBehaviour // hàm nước đi của cờ
 {
     public GameObject controller;
     public GameObject movePlate;
+    private Game game;
 
     private int xBoard = -1;
     private int yBoard = -1;
 
-    private string player;
+    public string player;
     public bool hasMoved = false;
+
+    public string GetPlayer() { return player; }
 
     public Sprite chess_bishop_black, chess_king_black, chess_knight_black, chess_rook_black, chess_pawn_black, chess_queen_black;
     public Sprite chess_bishop_white, chess_king_white, chess_knight_white, chess_rook_white, chess_pawn_white, chess_queen_white;
@@ -17,6 +27,8 @@ public class Chessman : MonoBehaviour // hàm nước đi của cờ
     public void Activate()
     {
         controller = GameObject.FindGameObjectWithTag("GameController");
+        // THÊM DÒNG NÀY:
+        game = controller.GetComponent<Game>();
 
         SetCoords();
 
@@ -67,12 +79,35 @@ public class Chessman : MonoBehaviour // hàm nước đi của cờ
 
     private void OnMouseUp()
     {
-        if (!controller.GetComponent<Game>().IsGameOver() && controller.GetComponent<Game>().GetCurrentPlayer() == player)
+        // Đảm bảo đã có tham chiếu Game
+        if (game == null)
         {
-            DestroyMovePlates();
-
-            InitiateMovePlates();
+            controller = GameObject.FindGameObjectWithTag("GameController");
+            if (controller != null)
+                game = controller.GetComponent<Game>();
         }
+
+        if (game == null)
+        {
+            Debug.LogError("Chessman: game == null, kiểm tra xem GameController đã gán tag chưa.");
+            return;
+        }
+
+        // Nếu ván đã kết thúc thì thôi
+        if (game.IsGameOver())
+            return;
+
+        // 1) Chỉ client nào **đến lượt mình** mới được đi
+        if (!game.IsMyTurn())
+            return;
+
+        // 2) Và chỉ được chọn **quân đúng màu đang được đi**
+        if (game.GetCurrentPlayer() != player)
+            return;
+
+        // Nếu qua hết các check trên -> mới spawn MovePlate
+        DestroyMovePlates();
+        InitiateMovePlates();
     }
 
     public void DestroyMovePlates()
