@@ -1,4 +1,11 @@
-﻿using UnityEngine;
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using TMPro;
+using System.Threading.Tasks;
+using Assets.Scripts;
 
 public class MovePlate : MonoBehaviour // Hàm hiện bước đi
 {
@@ -42,7 +49,21 @@ public class MovePlate : MonoBehaviour // Hàm hiện bước đi
         }
 
         Chessman cm = reference.GetComponent<Chessman>();
+        if (cm == null) return;
+
+        // Không phải lượt mình thì bỏ
+        if (!gameController.IsMyTurn() || gameController.GetCurrentPlayer() != cm.GetPlayer())
+        {
+            return;
+        }
+
+        // ===== 1. LƯU TỌA ĐỘ CŨ TRƯỚC KHI DI CHUYỂN =====
+        int fromX = cm.GetXBoard();
+        int fromY = cm.GetYBoard();
+
         bool gameEnded = false;
+
+        // ===== 2. XỬ LÝ ATTACK (ĂN QUÂN) =====
         if (attack)
         {
             GameObject cp = gameController.GetPosition(matrixX, matrixY);
@@ -51,19 +72,22 @@ public class MovePlate : MonoBehaviour // Hàm hiện bước đi
             {
                 if (cp.name == "chess_white_king")
                 {
-                    gameController.Winner("black");
+                    // đen ăn vua trắng -> đen thắng, notify server
+                    gameController.Winner("black", true);
                     gameEnded = true;
                 }
-                if (cp.name == "chess_black_king")
+                else if (cp.name == "chess_black_king")
                 {
-                    gameController.Winner("white");
+                    // trắng ăn vua đen -> trắng thắng, notify server
+                    gameController.Winner("white", true);
                     gameEnded = true;
                 }
-
 
                 Destroy(cp);
             }
         }
+
+        // ===== 3. NHẬP THÀNH NẾU CÓ =====
         if (isCastling)
         {
             GameObject rook = gameController.GetPosition(rookFromX, rookFromY);
@@ -80,7 +104,9 @@ public class MovePlate : MonoBehaviour // Hàm hiện bước đi
                 gameController.SetPosition(rook);
             }
         }
-        gameController.SetPositionEmpty(cm.GetXBoard(), cm.GetYBoard());
+
+        // ===== 4. CẬP NHẬT QUÂN CỜ CỦA MÌNH =====
+        gameController.SetPositionEmpty(fromX, fromY);
         cm.SetXBoard(matrixX);
         cm.SetYBoard(matrixY);
         cm.SetCoords();
@@ -88,13 +114,16 @@ public class MovePlate : MonoBehaviour // Hàm hiện bước đi
 
         gameController.SetPosition(reference);
         TryPromote(cm);
-   
+
         if (!gameEnded)
         {
             gameController.NextTurn();
         }
 
         cm.DestroyMovePlates();
+
+        // ===== 5. GỬI NƯỚC ĐI LÊN SERVER (from = tọa độ CŨ) =====
+        _ = SendMoveAsync(fromX, fromY, matrixX, matrixY);
     }
 
     void TryPromote(Chessman cm)
@@ -118,6 +147,23 @@ public class MovePlate : MonoBehaviour // Hàm hiện bước đi
     {
         matrixX = x;
         matrixY = y;
+
+        float fx = x;
+        float fy = y;
+
+        if (Assets.Scripts.GameSession.MyColor == "black")
+        {
+            fx = 7 - fx;
+            fy = 7 - fy;
+        }
+
+        fx *= 1.25f;
+        fy *= 1.25f;
+
+        fx += -4.37f;
+        fy += -4.37f;
+
+        transform.position = new Vector3(fx, fy, -1.0f);
     }
 
     public void SetReference(GameObject obj)
@@ -128,5 +174,39 @@ public class MovePlate : MonoBehaviour // Hàm hiện bước đi
     public GameObject GetReference()
     {
         return reference;
+    }
+
+    private async Task SendMoveAsync(int fromX, int fromY, int toX, int toY)
+    {
+        try
+        {
+            if (NetworkClient.Instance == null || !NetworkClient.Instance.IsConnected)
+                return;
+
+            string roomId = GameSession.RoomId ?? "000000";
+            string msg = $"MOVE|{roomId}|{fromX}|{fromY}|{toX}|{toY}";
+            await NetworkClient.Instance.SendAsync(msg);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError("Send MOVE error: " + ex.Message);
+        }
+    }
+
+    private async Task SendGameOverAsync(string winnerColor)
+    {
+        try
+        {
+            if (NetworkClient.Instance == null || !NetworkClient.Instance.IsConnected)
+                return;
+
+            string roomId = GameSession.RoomId ?? "000000";
+            string msg = $"GAME_OVER|{roomId}|{winnerColor}";
+            await NetworkClient.Instance.SendAsync(msg);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError("Send GAME_OVER error: " + ex.Message);
+        }
     }
 }

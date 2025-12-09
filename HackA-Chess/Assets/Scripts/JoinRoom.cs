@@ -321,29 +321,85 @@ namespace Assets.Scripts
 
         //  Xử lý phản hồi "JoinID|{ID}" Port: 8081
         //  (Join_EnterID_button / Join_CreateID_button).
-        private void HandleResponse_JoinID(string result) 
+        private void HandleResponse_JoinID(string result)
         {
+            Debug.Log("[JoinRoom] Raw JoinID response: " + result);
+
             if (string.IsNullOrEmpty(result))
             {
                 ShowMessage("Không nhận được phản hồi từ server.");
                 return;
             }
 
+            // Lấy ID mà user vừa nhập (hoặc từ ô CreateID)
+            string roomId = null;
+            if (ID_EnterID_inputfield != null && !string.IsNullOrWhiteSpace(ID_EnterID_inputfield.text))
+                roomId = ID_EnterID_inputfield.text.Trim();
+            else if (ID_CreateID_inputfield != null && !string.IsNullOrWhiteSpace(ID_CreateID_inputfield.text))
+                roomId = ID_CreateID_inputfield.text.Trim();
+
+            // Trim & tách dòng (phòng khi server gửi nhiều message dính nhau)
             result = result.Trim();
-            if (result.Equals("JoinID success", System.StringComparison.OrdinalIgnoreCase))
+            var lines = SplitLines(result);                 // đã có hàm SplitLines phía dưới
+            var firstLine = lines.Count > 0 ? lines[0] : result;
+
+            Debug.Log("[JoinRoom] JoinID firstLine = " + firstLine);
+
+            // ───────── JOIN SUCCESS ─────────
+            // Chấp nhận cả:
+            //  - "JoinID success"
+            //  - "JoinID success..." (lỡ dính thêm gì sau)
+            if (firstLine.IndexOf("JoinID success", StringComparison.OrdinalIgnoreCase) >= 0)
             {
+                // LƯU ROOM ID CHO SESSION
+                if (!string.IsNullOrEmpty(roomId))
+                    GameSession.RoomId = roomId;
+
                 ShowMessage("Gia nhập thành công! Đang chuyển tới phòng chờ...");
                 SceneManager.LoadScene(Waiting_Scene, LoadSceneMode.Single);
+                return;
             }
-            else if (result.Equals("JoinID fail", System.StringComparison.OrdinalIgnoreCase))
+
+            // ───────── JOIN FAIL ─────────
+            if (firstLine.IndexOf("JoinID fail", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 ShowMessage("Gia nhập phòng thất bại.");
-                //_ = OpenListRoomPanelAsync(true); // quay lại ListRoom (đã đóng các panel khác)
+                return;
             }
-            else
+
+            // (OPTIONAL) Nếu server sau này trả kiểu mới: "JOIN_OK|roomId|hostName"
+            if (firstLine.StartsWith("JOIN_OK", StringComparison.OrdinalIgnoreCase))
             {
-                ShowMessage($"Phản hồi lạ từ server: {result}");
+                var parts = firstLine.Split('|');
+                if (parts.Length >= 2)
+                {
+                    GameSession.RoomId = parts[1];
+                }
+
+                ShowMessage("Gia nhập thành công! Đang chuyển tới phòng chờ...");
+                SceneManager.LoadScene(Waiting_Scene, LoadSceneMode.Single);
+                return;
             }
+
+            if (firstLine.StartsWith("JOIN_FAIL", StringComparison.OrdinalIgnoreCase))
+            {
+                ShowMessage("Gia nhập phòng thất bại.");
+                return;
+            }
+
+            // ───────── GAME_START tới sớm (nếu có) ─────────
+            // Nếu server *lỡ* gửi thẳng GAME_START ở đây, ít nhất log ra xem thử:
+            if (firstLine.StartsWith("GAME_START", StringComparison.OrdinalIgnoreCase))
+            {
+                Debug.LogWarning("[JoinRoom] Nhận GAME_START ngay trong JoinRoom, có vẻ server gửi sớm quá.");
+                ShowMessage("Server gửi GAME_START quá sớm, xem lại logic server.");
+                // Ở đây mình không chuyển scene Game luôn,
+                // vì bạn đã có WaitingRoomListener lo chuyện đó.
+                return;
+            }
+
+            // ───────── Phản hồi không hiểu ─────────
+            ShowMessage($"Phản hồi lạ từ server (JoinID): {result}");
         }
 
         //  Xử lý phản hồi "Join|{ID}" Port: 8083
@@ -359,6 +415,10 @@ namespace Assets.Scripts
             result = result.Trim();
             if (result.Equals("Join success", System.StringComparison.OrdinalIgnoreCase))
             {
+                // LƯU ROOM ID CHO SESSION (dùng phòng đã chọn trong list)
+                if (!string.IsNullOrEmpty(_selectedRoomId))
+                    GameSession.RoomId = _selectedRoomId;
+                Debug.Log("[JoinRoom] Join success. Set GameSession.RoomId = " + GameSession.RoomId);
                 ShowMessage("Gia nhập thành công! Đang chuyển tới phòng chờ...");
                 SceneManager.LoadScene(Waiting_Scene, LoadSceneMode.Single);
             }
@@ -396,6 +456,9 @@ namespace Assets.Scripts
 
             if (SixDigits.IsMatch(result))
             {
+                // LƯU ROOM ID CHO SESSION
+                GameSession.RoomId = result;
+
                 if (ID_CreateID_inputfield != null)
                 {
                     ID_CreateID_inputfield.text = result;
