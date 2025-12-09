@@ -1,9 +1,9 @@
 ﻿using UnityEngine;
 
-public class MovePlate : MonoBehaviour // Hàm hiện bước đi
+public class MovePlateAI : MonoBehaviour // Hàm hiện bước đi
 {
-    private Game gameController;
-
+    private GameAI gameController;
+    private GameObject controller;
     private GameObject reference;
 
     int matrixX;
@@ -20,7 +20,9 @@ public class MovePlate : MonoBehaviour // Hàm hiện bước đi
         GameObject controllerObj = GameObject.FindGameObjectWithTag("GameController");
         if (controllerObj != null)
         {
-            gameController = controllerObj.GetComponent<Game>();
+            //gameController = controllerObj.GetComponent<Game>();
+            gameController = controllerObj.GetComponent<GameAI>();
+
         }
         else
         {
@@ -33,7 +35,7 @@ public class MovePlate : MonoBehaviour // Hàm hiện bước đi
         }
     }
 
-    void OnMouseUp()
+    public void OnMouseUp()
     {
         if (gameController == null)
         {
@@ -41,7 +43,7 @@ public class MovePlate : MonoBehaviour // Hàm hiện bước đi
             return;
         }
 
-        Chessman cm = reference.GetComponent<Chessman>();
+        ChessmanAI cm = reference.GetComponent<ChessmanAI>();
         bool gameEnded = false;
         if (attack)
         {
@@ -71,7 +73,7 @@ public class MovePlate : MonoBehaviour // Hàm hiện bước đi
             {
                 gameController.SetPositionEmpty(rookFromX, rookFromY);
 
-                Chessman rookCm = rook.GetComponent<Chessman>();
+                ChessmanAI rookCm = rook.GetComponent<ChessmanAI>();
                 rookCm.SetXBoard(rookToX);
                 rookCm.SetYBoard(rookToY);
                 rookCm.SetCoords();
@@ -88,7 +90,7 @@ public class MovePlate : MonoBehaviour // Hàm hiện bước đi
 
         gameController.SetPosition(reference);
         TryPromote(cm);
-
+   
         if (!gameEnded)
         {
             gameController.NextTurn();
@@ -97,7 +99,7 @@ public class MovePlate : MonoBehaviour // Hàm hiện bước đi
         cm.DestroyMovePlates();
     }
 
-    void TryPromote(Chessman cm)
+    void TryPromote(ChessmanAI cm)
     {
         SpriteRenderer sr = cm.GetComponent<SpriteRenderer>();
 
@@ -122,6 +124,7 @@ public class MovePlate : MonoBehaviour // Hàm hiện bước đi
 
     public void SetReference(GameObject obj)
     {
+        controller = obj;
         reference = obj;
     }
 

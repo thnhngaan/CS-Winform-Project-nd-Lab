@@ -92,7 +92,7 @@ public class Game : MonoBehaviour // Hàm quản lí bàn cờ
         {
             currentPlayer = "white";
         }
-        
+
     }
 
     public void Winner(string playerWinner)
@@ -102,8 +102,7 @@ public class Game : MonoBehaviour // Hàm quản lí bàn cờ
         gameOverUI.ShowGameOver(playerWinner);
     }
 
-    public GameOverScreen  gameOverUI;
+    public GameOverScreen gameOverUI;
 
 
 }
- 
