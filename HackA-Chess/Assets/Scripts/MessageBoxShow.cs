@@ -3,76 +3,62 @@ using TMPro;
 using UnityEngine.UI;
 using System;
 
-public class MessageBoxManager : MonoBehaviour
+namespace Assets.Scripts
 {
-    //singleton pattern
-    public static MessageBoxManager Instance;
-
-    [Header("UI References")]
-    public GameObject messageBoxPanel; //panel chính bao gồm cả nền mờ
-    public TMP_Text titleText;
-    public TMP_Text messageText;
-    public Button okButton;
-    public Button cancelButton;
-
-    private Action onOkAction;
-    private Action onCancelAction;
-
-    void Awake()
+    public class MessageBoxManager : MonoBehaviour
     {
-        //khởi tạo Singleton
-        if (Instance == null)
+        //singleton pattern
+        public static MessageBoxManager Instance { get; set; }
+
+        [Header("UI References")]
+        public GameObject messageBoxPanel; //panel chính bao gồm cả nền mờ
+        public TMP_Text titleText;
+        public TMP_Text messageText;
+        public Button okButton;
+        public Button cancelButton;
+
+        private Action onOkAction;
+        private Action onCancelAction;
+        void Awake()
         {
-            Instance = this;
-            DontDestroyOnLoad(gameObject); 
+            //khởi tạo Singleton
+            if (Instance == null)
+            {
+                Instance = this;
+                
+            }
+           
+            messageBoxPanel.SetActive(false);
         }
-        else
+        public void ShowMessageBox(string title, string message, Action okCallback = null, Action cancelCallback = null)
         {
-            Destroy(gameObject);
-        }
-        messageBoxPanel.SetActive(false);
-    }
-    public void ShowMessageBox(string title, string message, Action okCallback = null, bool isConfirm = false)
-    {
-        //gán nội dung
-        titleText.text = title;
-        messageText.text = message;
-        //cài đặt các hành động (Clear Listener trước để tránh lỗi)
-        okButton.onClick.RemoveAllListeners();
-        cancelButton.onClick.RemoveAllListeners();
+            titleText.text = title;
+            messageText.text = message;
 
-        onOkAction = okCallback;
-        onCancelAction = null; //hiện tại không dùng, có thể mở rộng
+            okButton.onClick.RemoveAllListeners();
+            cancelButton.onClick.RemoveAllListeners();
 
-        //cài đặt nút OK
-        okButton.onClick.AddListener(OnOkClicked);
-
-        //cài đặt nút Cancel/Confirm
-        if (isConfirm)
-        {
-            cancelButton.gameObject.SetActive(true);
+            onOkAction = okCallback;
+            onCancelAction = cancelCallback;
+                
+            okButton.onClick.AddListener(OnOkClicked);
             cancelButton.onClick.AddListener(OnCancelClicked);
+
+            messageBoxPanel.SetActive(true);
         }
-        else
+
+        //xử lý khi nhấn OK
+        private void OnOkClicked()
         {
-            cancelButton.gameObject.SetActive(false);
+            messageBoxPanel.SetActive(false); //ẩn hộp thoại
+            onOkAction?.Invoke(); //gọi hành động được truyền vào (nếu có)
         }
 
-        //hiển thị Panel
-        messageBoxPanel.SetActive(true);
-    }
-
-    //xử lý khi nhấn OK
-    private void OnOkClicked()
-    {
-        messageBoxPanel.SetActive(false); //ẩn hộp thoại
-        onOkAction?.Invoke(); //gọi hành động được truyền vào (nếu có)
-    }
-
-    // Xử lý khi nhấn Cancel
-    private void OnCancelClicked()
-    {
-        messageBoxPanel.SetActive(false); // Ẩn hộp thoại
-        onCancelAction?.Invoke(); // Gọi hành động Cancel (nếu có, bạn có thể truyền nó vào hàm ShowMessageBox)
+        // Xử lý khi nhấn Cancel
+        private void OnCancelClicked()
+        {
+            messageBoxPanel.SetActive(false); // Ẩn hộp thoại
+            onCancelAction?.Invoke(); // Gọi hành động Cancel (nếu có, bạn có thể truyền nó vào hàm ShowMessageBox)
+        }
     }
 }

@@ -52,4 +52,8 @@ public class NetworkClient
         _stream = null;
         _client = null;
     }
+    void OnApplicationQuit()
+    {
+        Disconnect();
+    }
 }

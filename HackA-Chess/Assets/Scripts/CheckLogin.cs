@@ -22,7 +22,7 @@ namespace Assets.Scripts
 
         private string serverIP = "127.0.0.1";// chỉnh sửa IP server nha, để người chơi nhập
         private int Port = 8080;
-
+        
         //hàm event ấn nút đăng nhập nè
         public async void OnLoginButtonClicked()
         {
@@ -30,7 +30,7 @@ namespace Assets.Scripts
             string password = passwordInput.text.Trim();
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {
-                ShowMessage("Vui lòng nhập tài khoản và mật khẩu.");
+                MessageBoxManager.Instance.ShowMessageBox("BÁO LỖI", "Vui lòng nhập tài khoản và mật khẩu");
                 return;
             }
 
@@ -90,7 +90,11 @@ namespace Assets.Scripts
             }
             //xử lý phản hồi từ server
             result = result.Trim();
-            if (result.Equals("Login success", System.StringComparison.OrdinalIgnoreCase))
+            if(result.Equals("Login failed|Tài khoản của bạn đã được đăng nhập ở nơi khác"))
+            {
+                MessageBoxManager.Instance.ShowMessageBox("BÁO LỖI", "TÀI KHOẢN CỦA BẠN ĐÃ ĐƯỢC ĐĂNG NHẬP Ở NƠI KHÁC");
+            }
+            else if (result.Equals("Login success", System.StringComparison.OrdinalIgnoreCase))
             {
                 Assets.Scripts.UserSession.CurrentUsername = username;
                 ShowMessage("Đăng nhập thành công!");
@@ -99,7 +103,7 @@ namespace Assets.Scripts
             }
             else if (result.Equals("Login failed", System.StringComparison.OrdinalIgnoreCase))
             {
-                ShowMessage("Sai tài khoản hoặc mật khẩu.");
+                MessageBoxManager.Instance.ShowMessageBox("BÁO LỖI", "SAI TÀI KHOẢN HOẶC MẬT KHẨU!");
             }
             else
             {

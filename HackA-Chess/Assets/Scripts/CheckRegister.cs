@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Assets.Scripts;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -71,39 +72,39 @@ public class RegisterUI : MonoBehaviour
            string.IsNullOrEmpty(confirm) || string.IsNullOrEmpty(email) ||
            string.IsNullOrEmpty(fullname) || string.IsNullOrEmpty(phone))
         {
-            ShowMessage("Vui lòng nhập đầy đủ thông tin.");
+            MessageBoxManager.Instance.ShowMessageBox("BÁO LỖI","Vui lòng nhập đầy đủ thông tin.");
             return;
         }
 
         // Kiểm tra định dạng
         if (!CheckFullName(fullname))
         {
-            ShowMessage("Họ tên sai định dạng (ít nhất 2 từ).");
+            MessageBoxManager.Instance.ShowMessageBox("BÁO LỖI", "Họ tên sai định dạng (ít nhất 2 từ).");
             return;
         }
         if (!CheckUsername(username))
         {
-            ShowMessage("Tên tài khoản 6–20 ký tự, chỉ chữ và số.");
+            MessageBoxManager.Instance.ShowMessageBox("BÁO LỖI", "Tên tài khoản 6–20 ký tự, chỉ chữ và số.");
             return;
         }
         if (!CheckEmail(email))
         {
-            ShowMessage("Email phải là Gmail hợp lệ.");
+            MessageBoxManager.Instance.ShowMessageBox("BÁO LỖI", "Email phải là Gmail hợp lệ.");
             return;
         }
         if (!CheckPhone(phone))
         {
-            ShowMessage("Số điện thoại phải có 10 số, bắt đầu bằng 0.");
+            MessageBoxManager.Instance.ShowMessageBox("BÁO LỖI", "Số điện thoại phải có 10 số, bắt đầu bằng 0.");
             return;
         }
         if (!CheckPasswordStrong(password))
         {
-            ShowMessage("Mật khẩu yếu. Cần 1 chữ hoa, 1 chữ thường, 1 số (6–32 ký tự).");
+            MessageBoxManager.Instance.ShowMessageBox("BÁO LỖI", "Mật khẩu yếu. Cần 1 chữ hoa, 1 chữ thường, 1 số (6–32 ký tự).");
             return;
         }
         if (password != confirm)
         {
-            ShowMessage("Mật khẩu xác nhận không khớp.");
+            MessageBoxManager.Instance.ShowMessageBox("BÁO LỖI", "Mật khẩu xác nhận không khớp.");
             return;
         }
 
@@ -117,13 +118,13 @@ public class RegisterUI : MonoBehaviour
 
             if (result == "Register success")
             {
-                ShowMessage("Tạo tài khoản thành công.");
+                MessageBoxManager.Instance.ShowMessageBox("THÔNG BÁO","Tạo tài khoản thành công");
                 await Task.Delay(1000);
                 SceneManager.LoadScene("Login");
             }
             else
             {
-                ShowMessage("Đăng ký thất bại. Tài khoản có thể đã tồn tại.");
+                MessageBoxManager.Instance.ShowMessageBox("BÁO LỖI", "Đăng ký thất bại. Tài khoản có thể đã tồn tại.");
             }
         }
         catch

@@ -12,6 +12,7 @@ public class AudioManager : MonoBehaviour
     public Sound[] musicSounds;
     public AudioSource musicSource;
 
+
     private void Awake()
     {
         if (Instance == null)
@@ -70,6 +71,10 @@ public class AudioManager : MonoBehaviour
     public void SetVolume(float value)
     {
         musicSource.volume = value;
+    }
+    public void StopBGM()
+    {
+        musicSource.Stop();
     }
 }
 

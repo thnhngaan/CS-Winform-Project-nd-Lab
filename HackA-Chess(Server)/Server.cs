@@ -103,6 +103,7 @@ namespace HackA_Chess_Server_
         private void TCPServer_Load(object sender, EventArgs e)
         {
             StartServer();
+            
         }
 
 
@@ -167,6 +168,13 @@ namespace HackA_Chess_Server_
                             //format:LOGIN|username|password
                             string username = parts[1];
                             string password = parts[2];
+                            if (OnlineUsers.ContainsKey(username))
+                            {
+                                byte[] usernameexist = Encoding.UTF8.GetBytes("Login failed|Tài khoản của bạn đã được đăng nhập ở nơi khác");
+                                AppendText($"Tài khoản {username} đang đăng nhập trong server");
+                                await stream.WriteAsync(usernameexist, 0, usernameexist.Length);
+                                break;
+                            }
 
                             bool status = CheckLogin(username, password);
                             string response = status ? "Login success" : "Login failed";
@@ -181,7 +189,6 @@ namespace HackA_Chess_Server_
                                 isLogin = true;
                                 currentUsername = username;
                                 AppendText($"Client {clientEP} đăng nhập thành công.");
-
                                 lock (OnlineUsers)
                                 {
                                     OnlineUsers[currentUsername] = client; // Lưu client theo username
@@ -241,11 +248,21 @@ namespace HackA_Chess_Server_
                     while (client.Connected) //còn vòng while này dành cho các tác vụ khác khi đã login vào server và nó sẽ giữ connected cho đến khi logout
                     {
                         string msg = await ReceiveMessage(stream);
-                        if (msg == null) continue;
+                        if (msg == null)
+                        {
+                            break;
+                        }
                         AppendText($"[Đã đăng nhập] {clientEP}: {msg}");
                         string[] parts = msg.Split('|');
                         if (parts[0] == "LOGOUT")
                         {
+                            if (!string.IsNullOrEmpty(currentUsername))
+                            {
+                                lock (OnlineUsers)
+                                {
+                                    OnlineUsers.Remove(currentUsername);
+                                }
+                            }
                             string response = "Logout success";
                             byte[] responsebytes = Encoding.UTF8.GetBytes(response);
                             await stream.WriteAsync(responsebytes, 0, responsebytes.Length);
@@ -706,7 +723,7 @@ namespace HackA_Chess_Server_
 
         #region LAN 
         // trong class Server
-        private static readonly Dictionary<string, TcpClient> OnlineUsers = new();
+        private static readonly Dictionary<string, TcpClient> OnlineUsers = new(); 
 
         private async Task StartGameForRoomAsync(string roomId)
         {
