@@ -923,7 +923,7 @@ MonoBehaviour:
   currentPlayer: white
   timerController: {fileID: 0}
   gameOverUI: {fileID: 1161149030}
-  gameMode: 2
+  gameMode: 1
 --- !u!1 &927785886
 GameObject:
   m_ObjectHideFlags: 0

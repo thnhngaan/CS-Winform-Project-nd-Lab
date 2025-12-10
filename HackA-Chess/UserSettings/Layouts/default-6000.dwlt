@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 1536
     height: 772.8
   m_ShowMode: 4
-  m_Title: Game
+  m_Title: Inspector
   m_RootView: {fileID: 2}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -119,7 +119,7 @@ MonoBehaviour:
   m_MinSize: {x: 300, y: 100}
   m_MaxSize: {x: 24288, y: 16192}
   vertical: 0
-  controlID: 110
+  controlID: 38
   draggingID: 0
 --- !u!114 &6
 MonoBehaviour:
@@ -192,8 +192,8 @@ MonoBehaviour:
     y: 0
     width: 270.4
     height: 487.2
-  m_MinSize: {x: 201, y: 226}
-  m_MaxSize: {x: 4001, y: 4026}
+  m_MinSize: {x: 200, y: 200}
+  m_MaxSize: {x: 4000, y: 4000}
   m_ActualView: {fileID: 13}
   m_Panes:
   - {fileID: 13}
@@ -218,8 +218,8 @@ MonoBehaviour:
     y: 0
     width: 890.4
     height: 487.2
-  m_MinSize: {x: 202, y: 226}
-  m_MaxSize: {x: 4002, y: 4026}
+  m_MinSize: {x: 200, y: 200}
+  m_MaxSize: {x: 4000, y: 4000}
   m_ActualView: {fileID: 14}
   m_Panes:
   - {fileID: 12}
@@ -255,7 +255,7 @@ MonoBehaviour:
   - {fileID: 18}
   - {fileID: 19}
   m_Selected: 0
-  m_LastSelected: 1
+  m_LastSelected: 2
 --- !u!114 &11
 MonoBehaviour:
   m_ObjectHideFlags: 52
@@ -275,8 +275,8 @@ MonoBehaviour:
     y: 0
     width: 375.19995
     height: 716.8
-  m_MinSize: {x: 276, y: 76}
-  m_MaxSize: {x: 4001, y: 4026}
+  m_MinSize: {x: 275, y: 50}
+  m_MaxSize: {x: 4000, y: 4000}
   m_ActualView: {fileID: 20}
   m_Panes:
   - {fileID: 20}
@@ -890,9 +890,9 @@ MonoBehaviour:
   m_SceneHierarchy:
     m_TreeViewState:
       scrollPos: {x: 0, y: 0}
-      m_SelectedIDs: 2a060100
-      m_LastClickedID: 67114
-      m_ExpandedIDs: 3469ffff48beffff24bfffffb8c2ffff98e7ffff60e8ffff7af1ffff06f7ffffd6faffff44bd0000debe0000ecbe000026bf000062bf0000d4bf00002ac0000052c000005ec000007ec00000d2c00000dcc00000fac0000032c100003acf0000d4d0000058d1000020d2000054d20000c8d20000f0d2000028d3000008da000026dc0000eedc000022dd000096dd0000f6dd0000
+      m_SelectedIDs: 16e20000
+      m_LastClickedID: 57878
+      m_ExpandedIDs: dedcffff9addffffc8defffff4e4ffff68e7ffff50f7ffff1ef8ffff00fbffffccbb0000eabd0000b2be0000e6be00005abf0000c8d2000098de00007ce0000016e200009ae2000062e3000096e300000ae400006ae40000
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -999,18 +999,18 @@ MonoBehaviour:
       y: 21
       width: 888.4
       height: 440.2
-    m_Scale: {x: 0.5111484, y: 0.5111484}
-    m_Translation: {x: 444.2, y: 220.3925}
+    m_Scale: {x: 0.51725036, y: 0.51725036}
+    m_Translation: {x: 444.2, y: 223.45215}
     m_MarginLeft: 0
     m_MarginRight: 0
     m_MarginTop: 0
     m_MarginBottom: 0
     m_LastShownAreaInsideMargins:
       serializedVersion: 2
-      x: -869.0236
-      y: -431.17126
-      width: 1738.0472
-      height: 861.19806
+      x: -858.7718
+      y: -432
+      width: 1717.5436
+      height: 851.0386
     m_MinimalGUI: 1
   m_defaultScale: 0.5094907
   m_LastWindowPixelSize: {x: 1110.5, y: 576.5}
@@ -1120,7 +1120,7 @@ MonoBehaviour:
     m_SkipHidden: 1
     m_SearchArea: 1
     m_Folders:
-    - Assets/Scripts/Chess/AI
+    - Assets/Scenes
     m_Globs: []
     m_ProductIds: 
     m_AnyWithAssetOrigin: 0
@@ -1130,16 +1130,16 @@ MonoBehaviour:
   m_ViewMode: 1
   m_StartGridSize: 60
   m_LastFolders:
-  - Assets/Scripts/Chess/AI
+  - Assets/Scenes
   m_LastFoldersGridSize: 60
   m_LastProjectPath: "C:\\Users\\nguye\\Desktop\\\u0110\u1ED3 \xE1n LTM\\updateUIprefinal1\\CS-Winform-Project-nd-Lab\\HackA-Chess"
   m_LockTracker:
     m_IsLocked: 0
   m_FolderTreeState:
-    scrollPos: {x: 0, y: 241.89984}
-    m_SelectedIDs: 80cd0000
-    m_LastClickedID: 52608
-    m_ExpandedIDs: 000000006abb00006ebb000076bb000078bb00007abb000084bb0000a0c2000000ca9a3b
+    scrollPos: {x: 0, y: 92.00043}
+    m_SelectedIDs: b6b90000
+    m_LastClickedID: 47542
+    m_ExpandedIDs: 00000000b4b90000b6b90000b8b9000028ba000000ca9a3b
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1168,7 +1168,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: 
     m_LastClickedID: 0
-    m_ExpandedIDs: 
+    m_ExpandedIDs: 00000000b4b90000b6b90000b8b90000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 

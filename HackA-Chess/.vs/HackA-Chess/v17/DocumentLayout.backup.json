@@ -3,28 +3,24 @@
   "WorkspaceRootPath": "C:\\Users\\nguye\\Desktop\\\u0110\u1ED3 \u00E1n LTM\\updateUIprefinal1\\CS-Winform-Project-nd-Lab\\HackA-Chess\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|C:\\Users\\nguye\\Desktop\\\u0110\u1ED3 \u00E1n LTM\\updateUIprefinal1\\CS-Winform-Project-nd-Lab\\HackA-Chess\\assets\\scripts\\chess\\ai\\gameai.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\chess\\ai\\gameai.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|C:\\Users\\nguye\\Desktop\\\u0110\u1ED3 \u00E1n LTM\\updateUIprefinal1\\CS-Winform-Project-nd-Lab\\HackA-Chess\\assets\\scripts\\chess\\ai\\moveplateai.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\chess\\ai\\moveplateai.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|c:\\users\\nguye\\desktop\\\u0111\u1ED3 \u00E1n ltm\\updateuiprefinal1\\cs-winform-project-nd-lab\\hacka-chess\\assets\\scripts\\chess\\ai\\minimaxai.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\chess\\ai\\minimaxai.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|c:\\users\\nguye\\desktop\\\u0111\u1ED3 \u00E1n ltm\\updateuiprefinal1\\cs-winform-project-nd-lab\\hacka-chess\\assets\\scripts\\chess\\ai\\aiplayer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\chess\\ai\\aiplayer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|C:\\Users\\nguye\\Desktop\\\u0110\u1ED3 \u00E1n LTM\\updateUIprefinal1\\CS-Winform-Project-nd-Lab\\HackA-Chess\\assets\\scripts\\mainmenu.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\mainmenu.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|C:\\Users\\nguye\\Desktop\\\u0110\u1ED3 \u00E1n LTM\\updateUIprefinal1\\CS-Winform-Project-nd-Lab\\HackA-Chess\\assets\\scripts\\chess\\ai\\chessmanai.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\chess\\ai\\chessmanai.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|C:\\Users\\nguye\\Desktop\\\u0110\u1ED3 \u00E1n LTM\\updateUIprefinal1\\CS-Winform-Project-nd-Lab\\HackA-Chess\\assets\\scripts\\mainmenu.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\mainmenu.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|C:\\Users\\nguye\\Desktop\\\u0110\u1ED3 \u00E1n LTM\\updateUIprefinal1\\CS-Winform-Project-nd-Lab\\HackA-Chess\\assets\\scripts\\chess\\ai\\moveplateai.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\chess\\ai\\moveplateai.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|C:\\Users\\nguye\\Desktop\\\u0110\u1ED3 \u00E1n LTM\\updateUIprefinal1\\CS-Winform-Project-nd-Lab\\HackA-Chess\\assets\\scripts\\chess\\ai\\gameai.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{41C98E63-015C-0E47-3FF4-B1FE54A8D38B}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\chess\\ai\\gameai.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -38,29 +34,16 @@
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 2,
               "Title": "ChessmanAI.cs",
               "DocumentMoniker": "C:\\Users\\nguye\\Desktop\\\u0110\u1ED3 \u00E1n LTM\\updateUIprefinal1\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\Chess\\AI\\ChessmanAI.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Chess\\AI\\ChessmanAI.cs",
               "ToolTip": "C:\\Users\\nguye\\Desktop\\\u0110\u1ED3 \u00E1n LTM\\updateUIprefinal1\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\Chess\\AI\\ChessmanAI.cs",
               "RelativeToolTip": "Assets\\Scripts\\Chess\\AI\\ChessmanAI.cs",
-              "ViewState": "AgIAACgAAAAAAAAAAAAQwAMAAAAUAAAAAAAAAA==",
+              "ViewState": "AgIAAHgAAAAAAAAAAAA4wL0AAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-12-08T08:24:05.278Z",
               "IsPinned": true
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "MiniMaxAI.cs",
-              "DocumentMoniker": "C:\\Users\\nguye\\Desktop\\\u0110\u1ED3 \u00E1n LTM\\updateUIprefinal1\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\Chess\\AI\\MiniMaxAI.cs",
-              "RelativeDocumentMoniker": "Assets\\Scripts\\Chess\\AI\\MiniMaxAI.cs",
-              "ToolTip": "C:\\Users\\nguye\\Desktop\\\u0110\u1ED3 \u00E1n LTM\\updateUIprefinal1\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\Chess\\AI\\MiniMaxAI.cs",
-              "RelativeToolTip": "Assets\\Scripts\\Chess\\AI\\MiniMaxAI.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-12-08T23:48:18.523Z",
-              "EditorCaption": ""
             },
             {
               "$type": "Bookmark",
@@ -72,46 +55,44 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 3,
               "Title": "MovePlateAI.cs",
               "DocumentMoniker": "C:\\Users\\nguye\\Desktop\\\u0110\u1ED3 \u00E1n LTM\\updateUIprefinal1\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\Chess\\AI\\MovePlateAI.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Chess\\AI\\MovePlateAI.cs",
               "ToolTip": "C:\\Users\\nguye\\Desktop\\\u0110\u1ED3 \u00E1n LTM\\updateUIprefinal1\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\Chess\\AI\\MovePlateAI.cs",
               "RelativeToolTip": "Assets\\Scripts\\Chess\\AI\\MovePlateAI.cs",
-              "ViewState": "AgIAAGYAAAAAAAAAAAAYwAgAAAAKAAAAAAAAAA==",
+              "ViewState": "AgIAAEgAAAAAAAAAAAAYwAgAAAAKAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-12-08T08:24:08.702Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-12-08T08:24:08.702Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 4,
               "Title": "GameAI.cs",
               "DocumentMoniker": "C:\\Users\\nguye\\Desktop\\\u0110\u1ED3 \u00E1n LTM\\updateUIprefinal1\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\Chess\\AI\\GameAI.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Chess\\AI\\GameAI.cs",
               "ToolTip": "C:\\Users\\nguye\\Desktop\\\u0110\u1ED3 \u00E1n LTM\\updateUIprefinal1\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\Chess\\AI\\GameAI.cs",
               "RelativeToolTip": "Assets\\Scripts\\Chess\\AI\\GameAI.cs",
-              "ViewState": "AgIAAAsAAAAAAAAAAAAAwC4AAAAgAAAAAAAAAA==",
+              "ViewState": "AgIAAFAAAAAAAAAAAAAgwC4AAAAgAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-12-08T08:24:07.101Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-12-08T08:24:07.101Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 0,
               "Title": "AIPlayer.cs",
               "DocumentMoniker": "C:\\Users\\nguye\\Desktop\\\u0110\u1ED3 \u00E1n LTM\\updateUIprefinal1\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\Chess\\AI\\AIPlayer.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Chess\\AI\\AIPlayer.cs",
               "ToolTip": "C:\\Users\\nguye\\Desktop\\\u0110\u1ED3 \u00E1n LTM\\updateUIprefinal1\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\Chess\\AI\\AIPlayer.cs",
               "RelativeToolTip": "Assets\\Scripts\\Chess\\AI\\AIPlayer.cs",
-              "ViewState": "AgIAAPgAAAAAAAAAAAAcwAkBAAAkAAAAAAAAAA==",
+              "ViewState": "AgIAACYAAAAAAAAAAAAgwDMAAAAmAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-12-08T08:36:21.585Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 1,
               "Title": "MainMenu.cs",
               "DocumentMoniker": "C:\\Users\\nguye\\Desktop\\\u0110\u1ED3 \u00E1n LTM\\updateUIprefinal1\\CS-Winform-Project-nd-Lab\\HackA-Chess\\Assets\\Scripts\\MainMenu.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\MainMenu.cs",

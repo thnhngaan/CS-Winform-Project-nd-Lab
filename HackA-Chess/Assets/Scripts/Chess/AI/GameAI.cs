@@ -25,7 +25,7 @@ public class GameAI : MonoBehaviour
     void Start()
     {
         //them ham khoi tao
-        /*string mode = PlayerPrefs.GetString("GameMode", "PvAI_Easy");
+        string mode = PlayerPrefs.GetString("GameMode", "PvAI_Easy");
 
         switch (mode)
         {
@@ -41,7 +41,7 @@ public class GameAI : MonoBehaviour
             default:
                 gameMode = GameMode.PvAI_Easy;
                 break;
-        }*/
+        }
         Time.timeScale = 1f;
 
         aiPlayer = GetComponent<AIPlayer>();
