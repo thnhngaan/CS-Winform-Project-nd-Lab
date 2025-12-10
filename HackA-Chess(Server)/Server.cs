@@ -820,6 +820,61 @@ WHERE RoomID = @id";
             }
         }
         #endregion
+        #region Raking
+        private static List<(string Username, string Fullname, int Elo, int TotalWin, int TotalDraw, int TotalLoss)> GetLeaderboardPage(int page, int pageSize, out int totalCount)
+        {
+            var list = new List<(string, string, int, int, int, int)>();
+            totalCount = 0;
 
+            if (page < 1) page = 1;
+            if (pageSize <= 0) pageSize = 10;
+
+            int offset = (page - 1) * pageSize;
+
+            using (var conn = Connection.GetSqlConnection())
+            {
+                conn.Open();
+
+                //lấy tổng số user  có trong server
+                using (var cmdCount = new SqlCommand("SELECT COUNT(*) FROM UserDB;", conn))
+                {
+                    totalCount = (int)cmdCount.ExecuteScalar();
+                }
+
+                if (totalCount == 0)
+                    return list;
+
+                //lấy 1 trang user theo 1 trang
+                string sql = @"SELECT Username, Fullname, Elo, TotalWin, TotalDraw, TotalLoss
+                               FROM UserDB
+                               ORDER BY Elo DESC, TotalWin DESC, Username ASC
+                               OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY;";
+
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@offset", offset);
+                    cmd.Parameters.AddWithValue("@pageSize", pageSize);
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+
+                            string username = reader["Username"].ToString();
+                            string fullname = reader["Fullname"].ToString();
+                            int elo = reader["Elo"] != DBNull.Value ? Convert.ToInt32(reader["Elo"]) : 1200;
+                            int win = reader["TotalWin"] != DBNull.Value ? Convert.ToInt32(reader["TotalWin"]) : 0;
+                            int draw = reader["TotalDraw"] != DBNull.Value ? Convert.ToInt32(reader["TotalDraw"]) : 0;
+                            int loss = reader["TotalLoss"] != DBNull.Value ? Convert.ToInt32(reader["TotalLoss"]) : 0;
+
+                            list.Add((username, fullname, elo, win, draw, loss));
+                        }
+                    }
+                }
+            }
+
+            return list;
+        }
+        #endregion
     }
 }

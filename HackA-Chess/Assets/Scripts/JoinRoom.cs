@@ -6,6 +6,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using TMPro;
+using Unity.Jobs;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -639,8 +641,10 @@ namespace Assets.Scripts
             //layout ngang cho các cột: ID | Host | EloHost | Status | Count
             var hLayout = go.AddComponent<HorizontalLayoutGroup>();
             hLayout.childAlignment = TextAnchor.MiddleLeft;
-            hLayout.childForceExpandWidth = true;
-            hLayout.childForceExpandHeight = true;
+            hLayout.childControlHeight = true;
+            hLayout.childControlWidth = true;
+            hLayout.childForceExpandWidth = false;
+            hLayout.childForceExpandHeight = false;
             hLayout.spacing = 10;
             hLayout.padding = new RectOffset(10, 10, 5, 5);
 
@@ -648,7 +652,7 @@ namespace Assets.Scripts
             var tID = CreateTmpText(go.transform, "Text_ID", id, TextAlignmentOptions.Left);
 
             //hostName
-            var tHost = CreateTmpText(go.transform, "Text_Host", hostName, TextAlignmentOptions.Center);
+            var tHost = CreateTmpText(go.transform, "Text_Host", hostName, TextAlignmentOptions.Left);
 
             //elo host
             var tElo = CreateTmpText(go.transform, "Text_Elo", hostElo.ToString(), TextAlignmentOptions.Left);
@@ -660,17 +664,31 @@ namespace Assets.Scripts
             var tCount = CreateTmpText(go.transform, "Text_Count", $"{count}/2", TextAlignmentOptions.Center);
 
             //LayoutElement cho từng cột
-            var leID = tID.gameObject.AddComponent<LayoutElement>();
-            leID.flexibleWidth = 0;
-
-            var leHost = tHost.gameObject.AddComponent<LayoutElement>();
-            leHost.flexibleWidth = 0;
-
-            var leElo = tElo.gameObject.AddComponent<LayoutElement>();
-            leElo.flexibleWidth = 0;
-
-            var leCount = tCount.gameObject.AddComponent<LayoutElement>();
-            leCount.flexibleWidth = 0;
+            if (tID != null)
+            {
+                var leID = tID.gameObject.AddComponent<LayoutElement>();
+                leID.preferredWidth = 300f;
+            }
+            if (tHost != null)
+            {
+                var leHost = tHost.gameObject.AddComponent<LayoutElement>();
+                leHost.preferredWidth = 500f;
+            }
+            if (tElo != null)
+            {
+                var leElo = tElo.gameObject.AddComponent<LayoutElement>();
+                leElo.preferredWidth = 300f;
+            }
+            if (sStatus != null)
+            {
+                var leStatus = sStatus.gameObject.AddComponent<LayoutElement>();
+                leStatus.preferredWidth = 400f;
+            }
+            if (tCount != null)
+            {
+                var leCount = tCount.gameObject.AddComponent<LayoutElement>();
+                leCount.preferredWidth= 400f;
+            }
         }
 
 

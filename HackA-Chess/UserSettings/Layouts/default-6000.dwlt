@@ -8,98 +8,23 @@ MonoBehaviour:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 0}
   m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 12004, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEditor.dll::UnityEditor.ContainerWindow
-  m_PixelRect:
-    serializedVersion: 2
-    x: 772.8
-    y: 160
-    width: 724.8
-    height: 578.4
-  m_ShowMode: 0
-  m_Title: Build Profiles
-  m_RootView: {fileID: 4}
-  m_MinSize: {x: 725, y: 426}
-  m_MaxSize: {x: 4000, y: 4026}
-  m_Maximized: 0
---- !u!114 &2
-MonoBehaviour:
-  m_ObjectHideFlags: 52
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
   m_EditorHideFlags: 1
   m_Script: {fileID: 12004, guid: 0000000000000000e000000000000000, type: 0}
   m_Name: 
   m_EditorClassIdentifier: 
   m_PixelRect:
     serializedVersion: 2
-    x: 7.2000003
-    y: 50.4
-    width: 1521.6
-    height: 758.4
+    x: 0
+    y: 43.2
+    width: 1536
+    height: 772.8
   m_ShowMode: 4
-  m_Title: Hierarchy
+  m_Title: Scene
   m_RootView: {fileID: 6}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
-  m_Maximized: 0
---- !u!114 &3
-MonoBehaviour:
-  m_ObjectHideFlags: 52
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 12006, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: BuildProfileWindow
-  m_EditorClassIdentifier: UnityEditor.dll::UnityEditor.DockArea
-  m_Children: []
-  m_Position:
-    serializedVersion: 2
-    x: 0
-    y: 0
-    width: 724.8
-    height: 578.4
-  m_MinSize: {x: 725, y: 426}
-  m_MaxSize: {x: 4000, y: 4026}
-  m_ActualView: {fileID: 15}
-  m_Panes:
-  - {fileID: 15}
-  m_Selected: 0
-  m_LastSelected: 0
---- !u!114 &4
-MonoBehaviour:
-  m_ObjectHideFlags: 52
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 12010, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEditor.dll::UnityEditor.SplitView
-  m_Children:
-  - {fileID: 3}
-  m_Position:
-    serializedVersion: 2
-    x: 0
-    y: 0
-    width: 724.8
-    height: 578.4
-  m_MinSize: {x: 725, y: 426}
-  m_MaxSize: {x: 4000, y: 4026}
-  vertical: 0
-  controlID: 463
-  draggingID: 0
---- !u!114 &5
+  m_Maximized: 1
+--- !u!114 &2
 MonoBehaviour:
   m_ObjectHideFlags: 52
   m_CorrespondingSourceObject: {fileID: 0}
@@ -170,8 +95,8 @@ MonoBehaviour:
     y: 0
     width: 304
     height: 424
-  m_MinSize: {x: 201, y: 226}
-  m_MaxSize: {x: 4001, y: 4026}
+  m_MinSize: {x: 200, y: 200}
+  m_MaxSize: {x: 4000, y: 4000}
   m_ActualView: {fileID: 14}
   m_Panes:
   - {fileID: 14}
@@ -401,7 +326,7 @@ MonoBehaviour:
     m_SkipHidden: 0
     m_SearchArea: 1
     m_Folders:
-    - Assets/Scripts/Chess
+    - Assets/Scenes
     m_Globs: []
     m_ProductIds: 
     m_AnyWithAssetOrigin: 0
@@ -411,16 +336,16 @@ MonoBehaviour:
   m_ViewMode: 1
   m_StartGridSize: 64
   m_LastFolders:
-  - Assets/Scripts/Chess
+  - Assets/Scenes
   m_LastFoldersGridSize: -1
-  m_LastProjectPath: D:\DoAnLapTrinhMang\CodeCuaThanhNgan\CS-Winform-Project-nd-Lab\HackA-Chess
+  m_LastProjectPath: D:\DoAnLapTrinhMang\DoAn 10.12\CS-Winform-Project-nd-Lab\HackA-Chess
   m_LockTracker:
     m_IsLocked: 0
   m_FolderTreeState:
     scrollPos: {x: 0, y: 60}
-    m_SelectedIDs: d8110100
-    m_LastClickedID: 70104
-    m_ExpandedIDs: 00000000f4fc000092080100041c010000ca9a3b
+    m_SelectedIDs: c2080100
+    m_LastClickedID: 67778
+    m_ExpandedIDs: 0000000016fd000000ca9a3b
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -595,9 +520,9 @@ MonoBehaviour:
   m_SceneHierarchy:
     m_TreeViewState:
       scrollPos: {x: 0, y: 0}
-      m_SelectedIDs: 
+      m_SelectedIDs: c6110100
       m_LastClickedID: 0
-      m_ExpandedIDs: 7871fdff8a71fdff6a74fdff7a74fdff1475fdff4a75fdff7e75fdffe875fdff1276fdff9a80fdff12a8fdff24a8fdff04abfdff14abfdffaeabfdffe4abfdff18acfdff82acfdffacacfdffd4aefdff58b3fdff0631feff7c38feff8e38feff6e3bfeff7e3bfeff183cfeff4e3cfeff823cfeffec3cfeff163dfeffb042feff9073feffa273feff8276feff9276feff2c77feff6277feff9677feff0078feff2a78feffce8bfeff3e99feff92a9feff18adfeffead8feff2ee0feff40e0feff18e3feff1ee3feff48e3feff76e3feffa2e3feff04e4feff26e4feffc8eafeff60f1feffc613ffff4018ffffb63a0100205001006c6c01005c77010082770100e07701002678010062780100747801007e780100887801009078010098780100b87801005479010084d40100bed40100c0ec0100b6f60100000602004c1b0200
+      m_ExpandedIDs: 5cc7feff70cafeff52dcfeff00e5feff12e5feff32e8feff4ae8feff5ae8fefff4e8feff2ae9feff5ee9feffc8e9fefff2e9feff3209ffffca0cffffc812ffff9617ffff484d0100
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -1103,9 +1028,9 @@ MonoBehaviour:
   m_AudioPlay: 0
   m_DebugDrawModesUseInteractiveLightBakingData: 0
   m_Position:
-    m_Target: {x: 926.99335, y: 388.0451, z: 93256.195}
+    m_Target: {x: 1033.643, y: 552.08124, z: 0}
     speed: 2
-    m_Value: {x: 926.99335, y: 388.0451, z: 93256.195}
+    m_Value: {x: 1033.643, y: 552.08124, z: 0}
   m_RenderMode: 0
   m_CameraMode:
     drawMode: 0
@@ -1155,9 +1080,9 @@ MonoBehaviour:
     speed: 2
     m_Value: {x: 0, y: 0, z: 0, w: 1}
   m_Size:
-    m_Target: 497.04236
+    m_Target: 616.4367
     speed: 2
-    m_Value: 497.04236
+    m_Value: 616.4367
   m_Ortho:
     m_Target: 1
     speed: 2
