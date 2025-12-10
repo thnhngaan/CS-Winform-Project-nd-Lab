@@ -2,7 +2,7 @@
 
 namespace Assets.Scripts
 {
-    // Không cần MonoBehaviour, chỉ là class static lưu trạng thái
+    // class static lưu trạng thái
     public static class GameSession
     {
         // màu của mình: "white" hoặc "black"

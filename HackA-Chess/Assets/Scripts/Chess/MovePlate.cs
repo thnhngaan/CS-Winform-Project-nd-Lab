@@ -176,7 +176,7 @@ public class MovePlate : MonoBehaviour // Hàm hiện bước đi
         return reference;
     }
 
-    private async Task SendMoveAsync(int fromX, int fromY, int toX, int toY)
+    private async Task SendMoveAsync(int fromX, int fromY, int toX, int toY) // Hàm gửi nước đi lên server
     {
         try
         {
@@ -193,7 +193,7 @@ public class MovePlate : MonoBehaviour // Hàm hiện bước đi
         }
     }
 
-    private async Task SendGameOverAsync(string winnerColor)
+    private async Task SendGameOverAsync(string winnerColor) // hàm gửi trạng thái gamover về server
     {
         try
         {

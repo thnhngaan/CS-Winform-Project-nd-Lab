@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-public class UnityMainThreadDispatcher : MonoBehaviour
+public class UnityMainThreadDispatcher : MonoBehaviour // hàm vận chuyển threads
 {
     public static UnityMainThreadDispatcher Instance;
 
@@ -14,7 +14,7 @@ public class UnityMainThreadDispatcher : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
-    public void Enqueue(Action action)
+    public void Enqueue(Action action) // Hàm thêm vào queue (hàng đợi)
     {
         lock (actions)
         {
@@ -22,7 +22,7 @@ public class UnityMainThreadDispatcher : MonoBehaviour
         }
     }
 
-    void Update()
+    void Update() // cập nhật lên main threads
     {
         lock (actions)
         {

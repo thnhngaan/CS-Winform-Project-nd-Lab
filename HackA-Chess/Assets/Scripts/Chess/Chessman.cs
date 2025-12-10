@@ -9,8 +9,8 @@ using Assets.Scripts;
 
 public class Chessman : MonoBehaviour // hàm nước đi của cờ
 {
-    public GameObject controller;
-    public GameObject movePlate;
+    public GameObject controller; // tạo controller điều khiển
+    public GameObject movePlate; // tạo moveplate
     private Game game;
 
     private int xBoard = -1;
@@ -21,14 +21,13 @@ public class Chessman : MonoBehaviour // hàm nước đi của cờ
 
     public string GetPlayer() { return player; }
 
-    public Sprite chess_bishop_black, chess_king_black, chess_knight_black, chess_rook_black, chess_pawn_black, chess_queen_black;
+    public Sprite chess_bishop_black, chess_king_black, chess_knight_black, chess_rook_black, chess_pawn_black, chess_queen_black; // tạo các quân cờ theo màu
     public Sprite chess_bishop_white, chess_king_white, chess_knight_white, chess_rook_white, chess_pawn_white, chess_queen_white;
 
     public void Activate()
     {
         controller = GameObject.FindGameObjectWithTag("GameController");
-        // THÊM DÒNG NÀY:
-        game = controller.GetComponent<Game>();
+        game = controller.GetComponent<Game>(); // gắn controller vào scnene Game
 
         SetCoords();
 
@@ -53,7 +52,7 @@ public class Chessman : MonoBehaviour // hàm nước đi của cờ
         }
 
     }
-
+    // Tạo tòa độ phù hợp trên bàn cờ
     public void SetCoords()
     {
         float x = xBoard;
@@ -83,9 +82,9 @@ public class Chessman : MonoBehaviour // hàm nước đi của cờ
 
     public void SetYBoard(int y) { yBoard = y; }
 
-    private void OnMouseUp()
+    private void OnMouseUp() // hàm clip chuột
     {
-        // Đảm bảo đã có tham chiếu Game
+
         if (game == null)
         {
             controller = GameObject.FindGameObjectWithTag("GameController");
@@ -116,7 +115,7 @@ public class Chessman : MonoBehaviour // hàm nước đi của cờ
         InitiateMovePlates();
     }
 
-    public void DestroyMovePlates()
+    public void DestroyMovePlates() // xóa moveplate khi đã đi xong nước 
     {
         GameObject[] movePlates = GameObject.FindGameObjectsWithTag("MovePlate");
         for (int i = 0; i < movePlates.Length; i++)
@@ -125,7 +124,7 @@ public class Chessman : MonoBehaviour // hàm nước đi của cờ
         }
     }
 
-    public void InitiateMovePlates()
+    public void InitiateMovePlates() // các Move của quân cờ dựa theo mảng
     {
         switch (this.name)
         {
@@ -331,7 +330,7 @@ public class Chessman : MonoBehaviour // hàm nước đi của cờ
 
     }
 
-    public void CastlingMovePlate()
+    public void CastlingMovePlate() // Nhập thành
     {
         Game sc = controller.GetComponent<Game>();
         if (player == "white" && xBoard == 4 && yBoard == 0)

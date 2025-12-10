@@ -24,7 +24,7 @@ public class Game : MonoBehaviour // Hàm quản lí bàn cờ
         string sessionColor = Assets.Scripts.GameSession.MyColor;
         if (!string.IsNullOrEmpty(sessionColor))
         {
-            myColor = sessionColor.ToLower();   // "white" hoặc "black"
+            myColor = sessionColor.ToLower();  // tạo session để phân biệt player "white" hoặc "black"
         }
         playerWhite = new GameObject[]
         { Create("chess_white_rook", 0, 0),Create("chess_white_knight", 1, 0),
@@ -48,7 +48,7 @@ public class Game : MonoBehaviour // Hàm quản lí bàn cờ
         }
     }
 
-    public GameObject Create(string name, int x, int y)
+    public GameObject Create(string name, int x, int y) // hàm khởi tạo bàn cờ
     {
         GameObject obj = Instantiate(chesspiece, new Vector3(0, 0, -1), Quaternion.identity);
         Chessman cm = obj.GetComponent<Chessman>();
@@ -58,7 +58,8 @@ public class Game : MonoBehaviour // Hàm quản lí bàn cờ
         cm.Activate();
         return obj;
     }
-    public void SetPosition(GameObject obj)
+
+    public void SetPosition(GameObject obj) // cập nhật vị trí quân cờ
     {
         Chessman cm = obj.GetComponent<Chessman>();
         positions[cm.GetXBoard(), cm.GetYBoard()] = obj;
@@ -69,18 +70,18 @@ public class Game : MonoBehaviour // Hàm quản lí bàn cờ
         positions[x, y] = null;
     }
 
-    public GameObject GetPosition(int x, int y)
+    public GameObject GetPosition(int x, int y) // lấy vị trí của quân cờ
     {
         return positions[x, y];
     }
 
-    public bool PositionOnBoard(int x, int y)
+    public bool PositionOnBoard(int x, int y) // kiểm tra vị trí của quân cờ
     {
         if (x < 0 || y < 0 || x >= positions.GetLength(0) || y >= positions.GetLength(1)) return false;
         return true;
     }
 
-    public string GetCurrentPlayer()
+    public string GetCurrentPlayer() // Cập nhật người chơi hiện tại
     {
         return currentPlayer;
     }
@@ -88,7 +89,7 @@ public class Game : MonoBehaviour // Hàm quản lí bàn cờ
     {
         return !gameOver && currentPlayer == myColor;
     }
-    public bool IsGameOver()
+    public bool IsGameOver() // Kiểm tra GameOver
     {
         return gameOver;
     }
@@ -100,7 +101,6 @@ public class Game : MonoBehaviour // Hàm quản lí bàn cờ
         else
             currentPlayer = "white";
 
-        // OPTIONAL: cập nhật text debug nếu có
         if (infoText != null)
         {
             infoText.text =
@@ -111,7 +111,8 @@ public class Game : MonoBehaviour // Hàm quản lí bàn cờ
         }
 
     }
-    public void ApplyNetworkMove(int fromX, int fromY, int toX, int toY)
+
+    public void ApplyNetworkMove(int fromX, int fromY, int toX, int toY) // hàm cập nhập nước cờ qua network
     {
         if (gameOver) return;
 
@@ -144,10 +145,47 @@ public class Game : MonoBehaviour // Hàm quản lí bàn cờ
         cm.SetCoords();
         SetPosition(piece);
 
-        // (chưa xử lý castling / phong cấp, tạm bỏ qua bản đầu)
+        //Castling 
+        if (cm.name.Contains("king") && Mathf.Abs(toX - fromX) == 2)
+        {
+            int rookFromX, rookToX;
+            int y = fromY; // vua ở hàng nào thì xe cũng hàng đó
+
+            if (toX > fromX)
+            {
+                rookFromX = 7;
+                rookToX = 5;
+            }
+            else
+            {
+                rookFromX = 0;
+                rookToX = 3;
+            }
+
+            GameObject rook = GetPosition(rookFromX, y);
+            if (rook != null)
+            {
+                Chessman rookCm = rook.GetComponent<Chessman>();
+
+                // xóa vị trí cũ của xe trong ma trận
+                SetPositionEmpty(rookFromX, y);
+
+                // cập nhật vị trí mới cho xe
+                rookCm.SetXBoard(rookToX);
+                rookCm.SetYBoard(y);
+                rookCm.SetCoords();
+                rookCm.hasMoved = true;
+                SetPosition(rook);
+            }
+            else
+            {
+                Debug.LogWarning("[ApplyNetworkMove] Không tìm thấy Xe để nhập thành!");
+            }
+        } 
         NextTurn();
     }
-    public void Winner(string playerWinner, bool notifyServer)
+
+    public void Winner(string playerWinner, bool notifyServer) // hàm trả về người thắng
     {
         if (gameOver) return;
 
@@ -171,7 +209,6 @@ public class Game : MonoBehaviour // Hàm quản lí bàn cờ
         gameOverUI.ShowGameOver(playerWinner);
     }
 
-    // overload cũ để code cũ vẫn xài được
     public void Winner(string playerWinner)
     {
         Winner(playerWinner, false);

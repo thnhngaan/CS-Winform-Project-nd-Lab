@@ -184,7 +184,7 @@ namespace Assets.Scripts
             CloseAllPanels(); // đảm bảo không chồng panel
             if (JoinRoom_Panel != null) JoinRoom_Panel.SetActive(true);
             if (ListRoom_Panel != null) ListRoom_Panel.SetActive(true);
-            if (refresh)                                                    // để ý
+            if (refresh)                                              
                 await LoadListRoomAsync(); 
         }
 
@@ -198,7 +198,7 @@ namespace Assets.Scripts
         }
 
         //  ListRoom_Panel (Join_button - JoinRoom_Panel) 
-        //  Gửi "Join|{ID}" Port: 8083
+        //  Gửi "Join|{ID}
         //  Nhận "Join success"/"Join fail"
         private async void OnJoin_buttonClicked() 
         {
@@ -262,8 +262,7 @@ namespace Assets.Scripts
         private void OpenCreateIDPanel()
         {
             // Đóng 3 panel
-
-            CreateID_Panel.transform.SetAsLastSibling();            //!
+            CreateID_Panel.transform.SetAsLastSibling();           
             CreateID_Panel.SetActive(true);
 
             if (ID_CreateID_inputfield != null)
@@ -289,7 +288,7 @@ namespace Assets.Scripts
         }
 
         //  CreateID_Panel (Create_CreateID_button)
-        //  Gửi "CREATE|{status}" Port: 8082
+        //  Gửi "CREATE|{status}"
         //  Nhận: "{ID 6 chữ số}" / "Create fail"
         private async void OnCreate_CreatID_buttonClicked()
         {
@@ -321,7 +320,7 @@ namespace Assets.Scripts
             HandleResponse_JoinID(result); 
         }
 
-        //  Xử lý phản hồi "JoinID|{ID}" Port: 8081
+        //  Xử lý phản hồi "JoinID|{ID}"
         //  (Join_EnterID_button / Join_CreateID_button).
         private void HandleResponse_JoinID(string result)
         {
@@ -342,7 +341,7 @@ namespace Assets.Scripts
 
             // Trim & tách dòng (phòng khi server gửi nhiều message dính nhau)
             result = result.Trim();
-            var lines = SplitLines(result);                 // đã có hàm SplitLines phía dưới
+            var lines = SplitLines(result);              
             var firstLine = lines.Count > 0 ? lines[0] : result;
 
             Debug.Log("[JoinRoom] JoinID firstLine = " + firstLine);
@@ -404,7 +403,7 @@ namespace Assets.Scripts
             ShowMessage($"Phản hồi lạ từ server (JoinID): {result}");
         }
 
-        //  Xử lý phản hồi "Join|{ID}" Port: 8083
+        //  Xử lý phản hồi "Join|{ID}"
         //  (Join_button).
         private void HandleResponse_Join(string result)
         {
@@ -436,7 +435,7 @@ namespace Assets.Scripts
         }
 
         //  XỬ LÝ PHẢN HỒI TỪ SERVER (CREATE)
-        //  Xử lý phản hồi "CREATE|{status}" Port: 8082
+        //  Xử lý phản hồi "CREATE|{status}"
         //  (Create_CreateID_button).
         private void HandleResponse_Create(string result) 
         {

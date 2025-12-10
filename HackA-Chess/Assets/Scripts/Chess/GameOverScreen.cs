@@ -14,7 +14,6 @@ public class GameOverScreen : MonoBehaviour
     public TMP_Text EnemyName;
 
     // Gọi hàm này khi hết game
-
     public void ShowGameOver(string winner)
     {
         winnerText.text = winner.ToUpper() + " WINS!";
@@ -38,7 +37,6 @@ public class GameOverScreen : MonoBehaviour
     // Nút Quit
     public void OnQuitButton()
     {
-        // nếu có MainMenu thì load:
         SceneManager.LoadScene("MainMenu");
     }
 }

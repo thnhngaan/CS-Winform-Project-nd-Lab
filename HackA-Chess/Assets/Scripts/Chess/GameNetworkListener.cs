@@ -4,27 +4,26 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using Assets.Scripts;
 
-public class GameNetworkListener : MonoBehaviour
+public class GameNetworkListener : MonoBehaviour // Hàm lắng nghe msg từ các player
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     [SerializeField] private Game game;
     [SerializeField] private TMP_Text statusText;
 
     private bool _listening;
 
-    private void Awake()
+    private void Awake() // bắt đầu lắng nghe khi bật scene Game
     {
         if (game == null)
             game = FindObjectOfType<Game>();
     }
 
-    private async void OnEnable()
+    private async void OnEnable() // Lắng nghe
     {
         _listening = true;
-        await ListenLoop();
+        await ListenLoop(); // vòng lặp lắng nghe msg
     }
 
-    private void OnDisable()
+    private void OnDisable() // Tắt lắng nghe
     {
         _listening = false;
     }
@@ -39,13 +38,13 @@ public class GameNetworkListener : MonoBehaviour
                 Debug.LogWarning("[GameNet] mất kết nối hoặc không có dữ liệu");
                 break;
             }
-            HandleServerMessage(msg);
+            HandleServerMessage(msg); // msg sẽ được HadleServerMessage xử lí
         }
     }
 
     private void HandleServerMessage(string msg)
     {
-        
+        // lắng nghe dữ liệu và lọc dữ liệu thành thành các case nhỏ
         Debug.Log("[GameNet] Received: " + msg);
         
         string[] parts = msg.Split('|');
@@ -62,9 +61,9 @@ public class GameNetworkListener : MonoBehaviour
         }
     }
 
-    private void HandleOppMove(string[] parts)
+    private void HandleOppMove(string[] parts) // hàm lắng nghe nước đi của đối thủ
     {
-        // OPP_MOVE|roomId|fromX|fromY|toX|toY
+        // nghe msg theo định dạng OPP_MOVE|roomId|fromX|fromY|toX|toY
         if (parts.Length < 6) return;
 
         string roomId = parts[1];
@@ -76,12 +75,12 @@ public class GameNetworkListener : MonoBehaviour
         int toY = int.Parse(parts[5]);
 
         if (game != null)
-            game.ApplyNetworkMove(fromX, fromY, toX, toY);
+            game.ApplyNetworkMove(fromX, fromY, toX, toY); // cập nhật scene game 
     }
 
-    private void HandleGameOver(string[] parts)
+    private void HandleGameOver(string[] parts) // hàm kết thúc game
     {
-        // GAME_OVER|roomId|winnerColor
+        // nghe msg theo định dạng GAME_OVER|roomId|winnerColor
         if (parts.Length < 3) return;
 
         string roomId = parts[1];
@@ -89,6 +88,6 @@ public class GameNetworkListener : MonoBehaviour
 
         string winnerColor = parts[2];
         if (!game.IsGameOver())
-            game.Winner(winnerColor);   // chỉ hiển thị UI, không gửi ngược server
+            game.Winner(winnerColor);  // chỉ hiển thị UI, không gửi ngược server
     }
 }
