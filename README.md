@@ -1,5 +1,4 @@
 # CS-Winform-Project-nd-Lab
-## Ứng dụng Cờ Vua (Chess Game) – Client / Server
 
 ## Thành viên thực hiện:
 - Trương Thị Thanh Ngân - 24521137 (Nhóm trưởng).
