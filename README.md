@@ -3,12 +3,11 @@
 
 ## Thành viên thực hiện:
 
-==
+
 
 ## Mục tiêu đồ án: 
 Xây dựng một ứng dụng Cờ vua (Chess Game) nhằm mô phỏng đầy đủ luật chơi cờ vua quốc tế, đồng thời áp dụng các kiến thức đã học về lập trình hướng đối tượng, lập trình giao diện và lập trình mạng.
 
-==
 
 ## Tổng quan hệ thống
 Hệ thống bao gồm 3 thành phần chính:
@@ -25,7 +24,7 @@ Hệ thống bao gồm 3 thành phần chính:
   - Điều phối trận đấu.
   - Giao tiếp với cơ sở dữ liệu.
 
-- **Database (SQL Server):**
+**Database (SQL Server):**
   - Lưu thông tin người dùng.
   - Lưu thống kê ELO, thắng/thua.
   - Lưu thông tin phòng chơi.
