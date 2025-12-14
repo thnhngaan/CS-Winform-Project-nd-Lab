@@ -2,10 +2,10 @@
 
 ## Thành viên thực hiện:
 - Trương Thị Thanh Ngân - 24521137 (Nhóm trưởng).
-- Tạ Đức Long - 24521013
-- Nguyễn Hữu Nghĩa - 24521144
-- Lê Văn Lộc - 24520982
-- Nguyễn Hiểu Lam - 24520933
+- Tạ Đức Long - 24521013.
+- Nguyễn Hữu Nghĩa - 24521144.
+- Lê Văn Lộc - 24520982.
+- Nguyễn Hiểu Lam - 24520933.
 
 ## Mục tiêu đồ án: 
 Xây dựng một ứng dụng Cờ vua (Chess Game) nhằm mô phỏng đầy đủ luật chơi cờ vua quốc tế bao gồm những tính năng cơ bản như:
