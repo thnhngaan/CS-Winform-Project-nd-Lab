@@ -37,51 +37,47 @@ public class MovePlateAI : MonoBehaviour // Hàm hiện bước đi
 
     public void OnMouseUp()
     {
-        if (gameController == null)
-        {
-            Debug.LogError("gameController null trong MovePlate! Kiểm tra tag GameController.");
-            return;
-        }
+        if (gameController == null) return;
+        var col = GetComponent<Collider2D>();
+        if (col != null) col.enabled = false;
 
+        if (reference == null) return;
         ChessmanAI cm = reference.GetComponent<ChessmanAI>();
+        if (cm == null) return;
+
+        cm.DestroyMovePlates();
+
         bool gameEnded = false;
+
         if (attack)
         {
             GameObject cp = gameController.GetPosition(matrixX, matrixY);
-
             if (cp != null)
             {
-                if (cp.name == "chess_white_king")
-                {
-                    gameController.Winner("black");
-                    gameEnded = true;
-                }
-                if (cp.name == "chess_black_king")
-                {
-                    gameController.Winner("white");
-                    gameEnded = true;
-                }
+                gameController.SetPositionEmpty(matrixX, matrixY);
 
+                if (cp.name == "chess_white_king") { gameController.Winner("black"); gameEnded = true; }
+                if (cp.name == "chess_black_king") { gameController.Winner("white"); gameEnded = true; }
 
                 Destroy(cp);
             }
         }
+
         if (isCastling)
         {
             GameObject rook = gameController.GetPosition(rookFromX, rookFromY);
             if (rook != null)
             {
                 gameController.SetPositionEmpty(rookFromX, rookFromY);
-
                 ChessmanAI rookCm = rook.GetComponent<ChessmanAI>();
                 rookCm.SetXBoard(rookToX);
                 rookCm.SetYBoard(rookToY);
                 rookCm.SetCoords();
                 rookCm.hasMoved = true;
-
                 gameController.SetPosition(rook);
             }
         }
+
         gameController.SetPositionEmpty(cm.GetXBoard(), cm.GetYBoard());
         cm.SetXBoard(matrixX);
         cm.SetYBoard(matrixY);
@@ -90,13 +86,9 @@ public class MovePlateAI : MonoBehaviour // Hàm hiện bước đi
 
         gameController.SetPosition(reference);
         TryPromote(cm);
-   
-        if (!gameEnded)
-        {
-            gameController.NextTurn();
-        }
 
-        cm.DestroyMovePlates();
+        if (!gameEnded)
+            gameController.NextTurn();
     }
 
     void TryPromote(ChessmanAI cm)

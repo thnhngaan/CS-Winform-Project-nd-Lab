@@ -14,7 +14,6 @@ public class GameAI : MonoBehaviour
 
     public string currentPlayer = "white";
     private bool gameOver = false;
-    public Timer timerController;
     public GameOverScreen gameOverUI;
 
     public enum GameMode {PvAI_Easy, PvAI_Normal, PvAI_Hard }

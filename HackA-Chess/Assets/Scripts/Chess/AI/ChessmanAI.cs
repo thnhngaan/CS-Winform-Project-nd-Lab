@@ -103,16 +103,15 @@ public class ChessmanAI : MonoBehaviour
         float fy = y * 1.25f - 4.37f;
 
         GameObject mp = Instantiate(movePlate, new Vector3(fx, fy, -3.0f), Quaternion.identity);
+
         MovePlateAI mpScript = mp.GetComponent<MovePlateAI>();
-        if (mpScript != null)
-        {
-            mpScript.SetReference(gameObject);
-            mpScript.SetCoords(x, y);
-        }
-        else
+        if (mpScript == null)
         {
             Debug.LogError("MovePlateAI script is missing from the MovePlate prefab!");
+            Destroy(mp);
+            return;
         }
+
         mpScript.attack = true;
         mpScript.SetReference(gameObject);
         mpScript.SetCoords(x, y);
@@ -235,10 +234,6 @@ public class ChessmanAI : MonoBehaviour
             if (sc.PositionOnBoard(nx, ny))
             {
                 GameObject enemy = sc.GetPosition(nx, ny);
-                /* if (enemy != null && enemy.GetComponent<Chessman>().player != player)
-                 {
-                     list.Add(new Vector2Int(nx, ny));
-                 }*/
                 if (enemy != null)
                 {
                     ChessmanAI cm = enemy.GetComponent<ChessmanAI>();
