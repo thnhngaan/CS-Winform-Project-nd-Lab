@@ -28,7 +28,7 @@ Transform:
   m_GameObject: {fileID: 563283055211031728}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.59, y: -0.64, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 0.35, y: 0.35, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -106,6 +106,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Chessman
   controller: {fileID: 0}
   movePlate: {fileID: 1629417098150286321, guid: ebdd9f04f2b4bfb448db45a0611ff4c0, type: 3}
+  player: 
   hasMoved: 0
   chess_bishop_black: {fileID: -1839820986891341407, guid: 58bde2ac6db89234691da762d0387469, type: 3}
   chess_king_black: {fileID: 2654564227598221988, guid: 2d31f301741228c41a36da502ab8dd82, type: 3}
