@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using TMPro;
 using Unity.Jobs;
@@ -93,10 +94,18 @@ namespace Assets.Scripts
             if (Back_button != null) Back_button.onClick.AddListener(OnBack_buttonClicked); 
             if (Join_button != null) Join_button.onClick.AddListener(OnJoin_buttonClicked); 
             if (Create_button != null) Create_button.onClick.AddListener(OpenCreateIDPanel);
-            if (JoinID_button != null) JoinID_button.onClick.AddListener(OpenEnterIDPanel);
+            if (JoinID_button != null)
+            {
+                JoinID_button.onClick.RemoveAllListeners();
+                JoinID_button.onClick.AddListener(OpenEnterIDPanel);
+            }
 
             // EnterID
-            if (Join_EnterID_button != null) Join_EnterID_button.onClick.AddListener(OnJoin_EnterID_buttonClicked);
+            if (Join_EnterID_button != null)
+            {
+                Join_EnterID_button.onClick.RemoveAllListeners();
+                Join_EnterID_button.onClick.AddListener(OnJoin_EnterID_buttonClicked);
+            }
             if (Back_EnterID_button != null)
             {
                 Back_EnterID_button.onClick.RemoveAllListeners();
@@ -204,8 +213,8 @@ namespace Assets.Scripts
         {
             if (!string.IsNullOrEmpty(_selectedRoomId) && SixDigits.IsMatch(_selectedRoomId))
             {
-                ShowMessage($"Đang gửi Join|{_selectedRoomId} ...");
-                string result = await SendMessageAsync($"Join|{_selectedRoomId}");
+                ShowMessage($"Đang gửi JOIN|{_selectedRoomId} ...");
+                string result = await SendMessageAsync($"JOIN|{_selectedRoomId}", "JOIN|");
                 HandleResponse_Join(result); 
             }
             else
@@ -252,9 +261,9 @@ namespace Assets.Scripts
             }
 
             ID_EnterID_inputfield.textComponent.color = Color.black;
-            ShowMessage("Đang gửi yêu cầu JoinID...");
+            ShowMessage("Đang gửi yêu cầu JOINID...");
 
-            string result = await SendMessageAsync($"JoinID|{id}");
+            string result = await SendMessageAsync($"JOINID|{id}", "JOINID|");
             HandleResponse_JoinID(result); 
         }
 
@@ -295,12 +304,13 @@ namespace Assets.Scripts
             status = GetStatusFromGroup();
             ShowMessage($"Đang gửi yêu cầu CREATE ({status})...");
 
-            string result = await SendMessageAsync($"CREATE|{status}");
+            string result = await SendMessageAsync($"CREATE|{status}","CREATE|");
             HandleResponse_Create(result); 
         }
 
         //  CreateID_Panel (Join_CreateID_button)
         //  Nhận: "JoinID success"/"JoinID fail"
+        //JOINID
         private async void OnJoin_CreateID_buttonClicked() 
         {
             if (ID_CreateID_inputfield == null) return;
@@ -316,7 +326,7 @@ namespace Assets.Scripts
             ID_CreateID_inputfield.textComponent.color = Color.black;
             ShowMessage("Đang gửi yêu cầu JoinID...");
 
-            string result = await SendMessageAsync($"JoinID|{id}");
+            string result = await SendMessageAsync($"JOINID|{id}", "JOINID|");
             HandleResponse_JoinID(result); 
         }
 
@@ -324,7 +334,6 @@ namespace Assets.Scripts
         //  (Join_EnterID_button / Join_CreateID_button).
         private void HandleResponse_JoinID(string result)
         {
-            Debug.Log("[JoinRoom] Raw JoinID response: " + result);
 
             if (string.IsNullOrEmpty(result))
             {
@@ -341,16 +350,11 @@ namespace Assets.Scripts
 
             // Trim & tách dòng (phòng khi server gửi nhiều message dính nhau)
             result = result.Trim();
-            var lines = SplitLines(result);              
-            var firstLine = lines.Count > 0 ? lines[0] : result;
-
-            Debug.Log("[JoinRoom] JoinID firstLine = " + firstLine);
+            
+            Debug.Log($"[JoinRoom] JoinID Room {roomId}: {result}");
 
             // ───────── JOIN SUCCESS ─────────
-            // Chấp nhận cả:
-            //  - "JoinID success"
-            //  - "JoinID success..." (lỡ dính thêm gì sau)
-            if (firstLine.IndexOf("JoinID success", StringComparison.OrdinalIgnoreCase) >= 0)
+            if (result.Equals("JOINID|SUCCESS", StringComparison.OrdinalIgnoreCase))
             {
                 // LƯU ROOM ID CHO SESSION
                 if (!string.IsNullOrEmpty(roomId))
@@ -362,43 +366,11 @@ namespace Assets.Scripts
             }
 
             // ───────── JOIN FAIL ─────────
-            if (firstLine.IndexOf("JoinID fail", StringComparison.OrdinalIgnoreCase) >= 0)
+            if (result.Equals("JOINID|FAILED", StringComparison.OrdinalIgnoreCase))
             {
                 ShowMessage("Gia nhập phòng thất bại.");
                 return;
             }
-
-            // (OPTIONAL) Nếu server sau này trả kiểu mới: "JOIN_OK|roomId|hostName"
-            if (firstLine.StartsWith("JOIN_OK", StringComparison.OrdinalIgnoreCase))
-            {
-                var parts = firstLine.Split('|');
-                if (parts.Length >= 2)
-                {
-                    GameSession.RoomId = parts[1];
-                }
-
-                ShowMessage("Gia nhập thành công! Đang chuyển tới phòng chờ...");
-                SceneManager.LoadScene(Waiting_Scene, LoadSceneMode.Single);
-                return;
-            }
-
-            if (firstLine.StartsWith("JOIN_FAIL", StringComparison.OrdinalIgnoreCase))
-            {
-                ShowMessage("Gia nhập phòng thất bại.");
-                return;
-            }
-
-            // ───────── GAME_START tới sớm (nếu có) ─────────
-            // Nếu server *lỡ* gửi thẳng GAME_START ở đây, ít nhất log ra xem thử:
-            if (firstLine.StartsWith("GAME_START", StringComparison.OrdinalIgnoreCase))
-            {
-                Debug.LogWarning("[JoinRoom] Nhận GAME_START ngay trong JoinRoom, có vẻ server gửi sớm quá.");
-                ShowMessage("Server gửi GAME_START quá sớm, xem lại logic server.");
-                // Ở đây mình không chuyển scene Game luôn,
-                // vì bạn đã có WaitingRoomListener lo chuyện đó.
-                return;
-            }
-
             // ───────── Phản hồi không hiểu ─────────
             ShowMessage($"Phản hồi lạ từ server (JoinID): {result}");
         }
@@ -414,7 +386,7 @@ namespace Assets.Scripts
             }
 
             result = result.Trim();
-            if (result.Equals("Join success", System.StringComparison.OrdinalIgnoreCase))
+            if (result.Equals("JOIN|SUCCESS", System.StringComparison.OrdinalIgnoreCase))
             {
                 // LƯU ROOM ID CHO SESSION (dùng phòng đã chọn trong list)
                 if (!string.IsNullOrEmpty(_selectedRoomId))
@@ -423,7 +395,7 @@ namespace Assets.Scripts
                 ShowMessage("Gia nhập thành công! Đang chuyển tới phòng chờ...");
                 SceneManager.LoadScene(Waiting_Scene, LoadSceneMode.Single);
             }
-            else if (result.Equals("Join fail", System.StringComparison.OrdinalIgnoreCase))
+            else if (result.Equals("JOIN|FAILED", System.StringComparison.OrdinalIgnoreCase))
             {
                 ShowMessage("Gia nhập phòng thất bại.");
                 _ = OpenListRoomPanelAsync(true);
@@ -447,7 +419,11 @@ namespace Assets.Scripts
 
             // Trim trước
             result = result.Trim();
-
+            string[] parts = result.Split('|');
+            if (result.Equals("CREATE|FAILED", System.StringComparison.OrdinalIgnoreCase))
+            {
+                ShowMessage("Gia nhập phòng thất bại.");
+            }
             // Nếu sau khi Trim mà rỗng -> coi như không nhận được gì
             if (string.IsNullOrEmpty(result))
             {
@@ -455,23 +431,19 @@ namespace Assets.Scripts
                 return;
             }
 
-            if (SixDigits.IsMatch(result))
+            if (SixDigits.IsMatch(parts[1].Trim()))
             {
                 // LƯU ROOM ID CHO SESSION
-                GameSession.RoomId = result;
+                GameSession.RoomId = parts[1].Trim();
 
                 if (ID_CreateID_inputfield != null)
                 {
-                    ID_CreateID_inputfield.text = result;
+                    ID_CreateID_inputfield.text = parts[1].Trim();
                     ID_CreateID_inputfield.textComponent.color = Color.green;
                 }
 
-                ShowMessage($"Tạo phòng thành công! ID: {result}. Đang chuyển tới phòng chờ...");
+                ShowMessage($"Tạo phòng thành công! ID: {parts[1].Trim()}. Đang chuyển tới phòng chờ...");
                 SceneManager.LoadScene(Waiting_Scene, LoadSceneMode.Single);
-            }
-            else if (result.Equals("Create fail", System.StringComparison.OrdinalIgnoreCase))
-            {
-                ShowMessage("Gia nhập phòng thất bại.");
             }
             else
             {
@@ -480,29 +452,26 @@ namespace Assets.Scripts
         }
 
         //Gửi/nhận thông điệp
-        private async Task<string> SendMessageAsync(string message)
+        private async Task<string> SendMessageAsync(string message, string waitPrefix = null, int timeoutMs = 5000)
         {
+            waitPrefix.Trim(); 
             try
             {
                 if (!NetworkClient.Instance.IsConnected)
-                {
                     return "Lỗi: Chưa kết nối tới server";
-                }
 
-                // Gửi message
                 await NetworkClient.Instance.SendAsync(message);
 
-                // Đọc 1 lần phản hồi từ server (chờ tới khi server gửi hoặc socket đóng)
-                string response = await NetworkClient.Instance.ReceiveOnceAsync();
+                string prefix = waitPrefix ?? string.Empty;
 
-                if (response == null)
-                {
-                    return "Lỗi: Mất kết nối với server hoặc không nhận được dữ liệu.";
-                }
+                string response = await NetworkClient.Instance.WaitForPrefixAsync(prefix, timeoutMs);
+
+                if (string.IsNullOrEmpty(response))
+                    return "Lỗi: Không nhận được dữ liệu (timeout hoặc mất kết nối).";
 
                 return response;
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
                 Debug.LogError($"TCP Error: {ex.Message}");
                 return $"Lỗi: {ex.Message}";
@@ -520,25 +489,14 @@ namespace Assets.Scripts
 
             ShowMessage("Đang tải danh sách phòng public...");
 
-            string result = await SendMessageAsync("ListRoom");
-            var lines = SplitLines(result);
-            int added = 0;
-            foreach (var line in lines)
+            string result = await SendMessageAsync("ListRoom","ListRoom|");
+            string[]rooms=result.Split('|');
+            for (int i = 1; i < rooms.Length; i++)
             {
-                if (TryParseRoom(line, out var id, out var count, out var hostName, out var hostElo))
-                {
-                    AddListRoomItem(id, count, hostName, hostElo);
-                    added++;
-                }
+                string[] room = rooms[i].Split(",");
+                AddListRoomItem(room[0], int.Parse(room[1]), room[2], int.Parse(room[3]));
             }
-
-            if (added == 0)
-                ShowMessage("Không có phòng trống (public, 0/1).");
-            else
-                ShowMessage("");
         }
-        
-        //  Tách chuỗi nhiều dòng thành danh sách các dòng riêng biệt: ListRoomItem
         private List<string> SplitLines(string block)
         {
             var list = new List<string>();
