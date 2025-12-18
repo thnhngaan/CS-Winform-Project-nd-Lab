@@ -20,9 +20,9 @@ namespace Assets.Scripts
         [Header("Next Scene / Panel")]
         public string NextScene;
 
-        private string serverIP = "127.0.0.1";// chỉnh sửa IP server nha, để người chơi nhập
+        private string serverIP = "127.0.0.1";// chỉnh sửa IP server nha, để người chơi nhập///////
         private int Port = 8080;
-        
+
         //hàm event ấn nút đăng nhập nè
         public async void OnLoginButtonClicked()
         {
@@ -90,7 +90,7 @@ namespace Assets.Scripts
             }
             //xử lý phản hồi từ server
             result = result.Trim();
-            if(result.Equals("Login failed|Tài khoản của bạn đã được đăng nhập ở nơi khác"))
+            if (result.Equals("Login failed|Tài khoản của bạn đã được đăng nhập ở nơi khác"))
             {
                 MessageBoxManager.Instance.ShowMessageBox("BÁO LỖI", "TÀI KHOẢN CỦA BẠN ĐÃ ĐƯỢC ĐĂNG NHẬP Ở NƠI KHÁC");
             }
