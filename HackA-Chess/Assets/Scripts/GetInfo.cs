@@ -39,7 +39,7 @@ public class GetInfo : MonoBehaviour
         await NetworkClient.Instance.SendAsync(msg);
         Debug.Log("Đã gửi: " + msg);
 
-        string resp = await NetworkClient.Instance.ReceiveOnceAsync();
+        string resp = await NetworkClient.Instance.WaitForPrefixAsync("GETINFO|",5000);
 
         if (string.IsNullOrEmpty(resp))
         {

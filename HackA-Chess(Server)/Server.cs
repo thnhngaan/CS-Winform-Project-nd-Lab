@@ -12,6 +12,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Collections.Concurrent;
 using HackA_Chess_Server_;
 using Microsoft.Data.SqlClient;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
@@ -153,6 +154,7 @@ namespace HackA_Chess_Server_
                     while (client.Connected && !isLogin) //vòng while này để kết nối 1 lần rồi close dành cho login và register
                     {
                         string data = await ReceiveMessage(stream);
+                        data.Trim();
                         if (data == null) break;
                         AppendText($"Client ({clientEP}) gửi 1 thông điệp: {data}");
                         string[] parts = data.Split('|', StringSplitOptions.RemoveEmptyEntries);
@@ -166,18 +168,18 @@ namespace HackA_Chess_Server_
                                 continue;
                             }
                             //format:LOGIN|username|password
-                            string username = parts[1];
-                            string password = parts[2];
+                            string username = parts[1].Trim();
+                            string password = parts[2].Trim();
                             if (OnlineUsers.ContainsKey(username))
                             {
-                                byte[] usernameexist = Encoding.UTF8.GetBytes("Login failed|Tài khoản của bạn đã được đăng nhập ở nơi khác");
+                                byte[] usernameexist = Encoding.UTF8.GetBytes("LOGIN|FAILED_Tài khoản của bạn đã được đăng nhập ở nơi khác\n");
                                 AppendText($"Tài khoản {username} đang đăng nhập trong server");
                                 await stream.WriteAsync(usernameexist, 0, usernameexist.Length);
                                 break;
                             }
 
                             bool status = CheckLogin(username, password);
-                            string response = status ? "Login success" : "Login failed";
+                            string response = status ? "LOGIN|SUCCESS\n" : "LOGIN|FAILED\n";
 
                             byte[] responsebytes = Encoding.UTF8.GetBytes(response);
                             await stream.WriteAsync(responsebytes, 0, responsebytes.Length);
@@ -215,16 +217,16 @@ namespace HackA_Chess_Server_
                             string Password = parts[2];
                             string Email = parts[3];
                             string Fullname = parts[4];
-                            string Sdt = parts[5];
+                            string Sdt = parts[5].Trim();
                             bool isUsernameExist = UsernameExist(Username); //cái đoạn này logic hơi ngược tí =)))))
                             string response;
                             if (isUsernameExist)
-                                response = "Register failed";
+                                response = "REGISTER|FAILED\n";
                             else
                             {
                                 AddUsertoDatabase(Username, Password, Email, Fullname, Sdt, 1200, 0, 0, 0, "Avatar/icons8-avatar-50");
                                 currentUsername = Username;
-                                response = "Register success";
+                                response = "REGISTER|SUCCESS\n";
                             }
 
                             byte[] responsebytes = Encoding.UTF8.GetBytes(response);
@@ -270,10 +272,11 @@ namespace HackA_Chess_Server_
                         }
                         if (parts[0] == "GETINFO")
                         {
-                            string username = parts[1];
+                            string username = parts[1].Trim();
                             //truy vấn sql từ username
                             string response = GetUserInfoFromDatabase(username);
-
+                            response += '\n';
+                            AppendText(response);
                             //gửi về client
                             byte[] data = Encoding.UTF8.GetBytes(response);
                             await stream.WriteAsync(data, 0, data.Length);
@@ -282,7 +285,7 @@ namespace HackA_Chess_Server_
                         {
                             if (currentUsername == null)
                             {
-                                string resp = "Create fail"; //phải login vào rồi mới đc tạo phòng (có thể bỏ dòng này để test nha)
+                                string resp = "CREATE|FAILED\n"; //phải login vào rồi mới đc tạo phòng (có thể bỏ dòng này để test nha)
                                 byte[] respBytes = Encoding.UTF8.GetBytes(resp);
                                 await stream.WriteAsync(respBytes, 0, respBytes.Length);
                                 continue;
@@ -296,41 +299,42 @@ namespace HackA_Chess_Server_
                             string response;
                             if (roomId != null)
                             {
-                                response = roomId;
+                                response = $"CREATE|{roomId}\n";
                             }
                             else
                             {
-                                response = "Create fail";
+                                response = "CREATE|FAILED\n";
                             }
                             AppendText($"Server trả về ID phòng vừa tạo {response}");
                             byte[] respData = Encoding.UTF8.GetBytes(response);
                             await stream.WriteAsync(respData, 0, respData.Length);
                             continue;
                         }
-                        if (parts[0] == "ListRoom")
+                        if (parts[0].Trim() == "ListRoom")
                         {
                             var rooms = GetPublicRooms();  // giờ trả về RoomID, NumberPlayer, HostUsername, HostElo
-                            var sb = new StringBuilder();
+                            var sb = new StringBuilder("ListRoom|");
                             foreach (var room in rooms)
                             {
                                 //định dạng: RoomID,NumberPlayer,HostUsername,HostElo
-                                sb.AppendLine($"{room.RoomID},{room.NumberPlayer},{room.HostUsername},{room.HostElo}");
+                                sb.Append($"{room.RoomID},{room.NumberPlayer},{room.HostUsername},{room.HostElo}|");
                             }
 
                             string response = sb.ToString();  //có thể rỗng("") nếu không có phòng nào
-
+                            response =response.Substring(0,response.Length - 1);
+                            response += '\n';
                             AppendText("[SERVER] Gửi danh sách phòng:\n" + (string.IsNullOrEmpty(response) ? "(trống)" : response));
 
                             byte[] respData = Encoding.UTF8.GetBytes(response);
                             await stream.WriteAsync(respData, 0, respData.Length);
                             continue;
                         }
-                        if (parts[0] == "Join")
+                        if (parts[0] == "JOIN")
                         {
                             // Kiểm tra format gói tin
                             if (parts.Length < 2)
                             {
-                                string resp = "Join fail";
+                                string resp = "JOIN|FAILED\n";
                                 byte[] respBytes = Encoding.UTF8.GetBytes(resp);
                                 await stream.WriteAsync(respBytes, 0, respBytes.Length);
 
@@ -343,7 +347,7 @@ namespace HackA_Chess_Server_
                             //ID (6 chữ số)
                             if (roomId.Length != 6 || !roomId.All(char.IsDigit))
                             {
-                                string resp = "Join fail";
+                                string resp = "JOIN|FAILED\n";
                                 byte[] respBytes = Encoding.UTF8.GetBytes(resp);
                                 await stream.WriteAsync(respBytes, 0, respBytes.Length);
 
@@ -352,7 +356,7 @@ namespace HackA_Chess_Server_
                             }
 
                             bool result = TryJoinRoom(roomId, currentUsername);
-                            string response = result ? "Join success" : "Join fail";
+                            string response = result ? "JOIN|SUCCESS\n" : "JOIN|FAILED\n";
 
                             AppendText($"Client {clientEP} Join room {roomId}: {response}");
 
@@ -363,11 +367,11 @@ namespace HackA_Chess_Server_
                             continue;
                         }
 
-                        if (parts[0] == "JoinID")
+                        if (parts[0] == "JOINID")
                         {
                             if (parts.Length < 2)
                             {
-                                string resp = "JoinID fail";
+                                string resp = "JOINID|FAILED\n";
                                 byte[] respBytes = Encoding.UTF8.GetBytes(resp);
                                 await stream.WriteAsync(respBytes, 0, respBytes.Length);
 
@@ -379,7 +383,7 @@ namespace HackA_Chess_Server_
 
                             if (roomId.Length != 6 || !roomId.All(char.IsDigit)) //ID
                             {
-                                string resp = "JoinID fail";
+                                string resp = "JOINID|FAILED\n";
                                 byte[] respBytes = Encoding.UTF8.GetBytes(resp);
                                 await stream.WriteAsync(respBytes, 0, respBytes.Length);
 
@@ -388,7 +392,7 @@ namespace HackA_Chess_Server_
                             }
 
                             bool result = TryJoinRoom(roomId, currentUsername);
-                            string response = result ? "JoinID success" : "JoinID fail";
+                            string response = result ? "JOINID|SUCCESS\n" : "JOINID|FAILED\n";
 
                             AppendText($"Client {clientEP} JoinID room {roomId}: {response}");
 
@@ -464,13 +468,13 @@ namespace HackA_Chess_Server_
                             var sb = new StringBuilder();
                             foreach (var e in entries)
                             {
-                                // tránh ký tự '|' trong fullname nếu có
+                                //tránh ký tự '|' trong fullname nếu có
                                 string safeFullname = e.Fullname?.Replace("|", "/") ?? "";
                                 if(currentUsername==e.Username) sb.Append(e.Username + "(Me)").Append(',').Append(safeFullname).Append(',').Append(e.Elo).Append(',').Append(e.TotalWin).Append(',').Append(e.TotalDraw).Append(',').Append(e.TotalLoss).Append(';');
                                 else sb.Append(e.Username).Append(',').Append(safeFullname).Append(',').Append(e.Elo).Append(',').Append(e.TotalWin).Append(',').Append(e.TotalDraw).Append(',').Append(e.TotalLoss).Append(';');
                             }
                             string dataPart = sb.ToString();
-                            string response = $"RANK_PAGE|{page}|{totalCount}|{dataPart}";
+                            string response = $"RANK_PAGE|{page}|{totalCount}|{dataPart}\n";
 
                             byte[] respBytes = Encoding.UTF8.GetBytes(response);
                             await stream.WriteAsync(respBytes, 0, respBytes.Length);
@@ -515,6 +519,17 @@ namespace HackA_Chess_Server_
                             // TODO: sau này update lịch sử đấu / ELO ở đây
 
                             continue;
+                        }
+                        if (parts[0] == "CHATGLOBAL")
+                        {
+                            if (parts.Length < 3)
+                                continue;
+                            string username = parts[1];
+                            string chatmsg = parts[2];
+                            AppendText($"Server gửi thông điệp CHATGLOBAL|{username}|{chatmsg} lại cho tất cả các client");
+
+                            await BroadcastGlobalChat(username, chatmsg);
+                            continue;   
                         }
                     }
                 }
@@ -776,7 +791,7 @@ WHERE RoomID = @id";
                             try
                             {
                                 var s = hostClient.GetStream();
-                                string msg = $"GAME_START|white|{roomId}|{clientUser}";
+                                string msg = $"GAME_START|white|{roomId}|{clientUser}\n";
                                 byte[] data = Encoding.UTF8.GetBytes(msg);
                                 await s.WriteAsync(data, 0, data.Length);
                             }
@@ -795,7 +810,7 @@ WHERE RoomID = @id";
                             try
                             {
                                 var s = clientClient.GetStream();
-                                string msg = $"GAME_START|black|{roomId}|{host}";
+                                string msg = $"GAME_START|black|{roomId}|{host}\n";
                                 byte[] data = Encoding.UTF8.GetBytes(msg);
                                 await s.WriteAsync(data, 0, data.Length);
                             }
@@ -891,6 +906,91 @@ WHERE RoomID = @id";
             }
 
             return list;
+        }
+        #endregion
+
+        #region ChatGlobal
+        private static readonly ConcurrentDictionary<TcpClient, SemaphoreSlim> SendLock = new(); //tránh ghi trồng lên nhau 
+        private async Task BroadcastGlobalChat(string username, string chatmsg, TcpClient ExceptClient = null)
+        {
+            string broadcast = $"CHATGLOBAL|{username}|{chatmsg}\n";
+            byte[] bytes = Encoding.UTF8.GetBytes(broadcast);
+            List<TcpClient> targets;
+            lock (OnlineUsers)
+            {
+                targets = OnlineUsers.Values.Where(c => c != null).Distinct().ToList(); //lấy danh sách clients đang online, lọc và làm sạch trước khi gửi lại broadcast
+                
+            }
+            foreach (var c in targets)
+            {
+                if (c == ExceptClient) continue;
+                if (!c.Connected) continue;
+                var sem = SendLock.GetOrAdd(c, _ => new SemaphoreSlim(1, 1)); //semaphoreslim(1,1) quăng cho client 1 cái key => giúp chặn các msg gửi chồng lên nhau vào cùng 1 client vì tính chất của tcp có thể bị đan xen 
+                await sem.WaitAsync();
+                try
+                {
+                    await c.GetStream().WriteAsync(bytes, 0, bytes.Length);
+                }
+                catch
+                {
+
+                }
+                finally
+                {
+                    sem.Release();
+                }
+            }
+            
+        }
+
+
+        #endregion
+        #region cập nhập UI waitngroom broacast
+        private static string KeyUser(string u) => (u ?? "").Trim().ToLowerInvariant();
+
+        private async Task SendLineAsync(TcpClient cli, string line)
+        {
+            if (cli == null || !cli.Connected) return;
+            var data = Encoding.UTF8.GetBytes(line.EndsWith("\n") ? line : line + "\n");
+            await cli.GetStream().WriteAsync(data, 0, data.Length);
+        }
+
+        private async Task BroadcastRoomUpdateAsync(string roomId)
+        {
+            string host = null, client = null;
+
+            using (var conn = Connection.GetSqlConnection())
+            {
+                conn.Open();
+                var cmd = new SqlCommand(@"SELECT UsernameHost, UsernameClient FROM ROOM WHERE RoomID=@id", conn);
+                cmd.Parameters.AddWithValue("@id", roomId);
+                using var r = cmd.ExecuteReader();
+                if (!r.Read()) return;
+
+                host = r["UsernameHost"]?.ToString();
+                client = r["UsernameClient"]?.ToString();
+            }
+
+            var hostKey = KeyUser(host);
+            var clientKey = KeyUser(client);
+
+            TcpClient hostCli = null, clientCli = null;
+            lock (OnlineUsers)
+            {
+                OnlineUsers.TryGetValue(hostKey, out hostCli);
+                OnlineUsers.TryGetValue(clientKey, out clientCli);
+            }
+
+            string msg = $"ROOM_UPDATE|{roomId}|{host}|{client}\n";
+
+            // gửi cho host nếu online
+            await SendLineAsync(hostCli, msg);
+
+            // gửi cho client nếu online và khác host
+            if (!string.IsNullOrEmpty(clientKey) && clientKey != hostKey)
+                await SendLineAsync(clientCli, msg);
+
+            AppendText($"[ROOM_UPDATE] {msg.Trim()}");
         }
         #endregion
     }

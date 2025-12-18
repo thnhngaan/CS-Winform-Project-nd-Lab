@@ -116,7 +116,7 @@ public class RegisterUI : MonoBehaviour
         {
             string result = await SendRegisterRequestAsync(username, hashedPassword, email, fullname, phone);
 
-            if (result == "Register success")
+            if (result == "REGISTER|SUCCESS")
             {
                 MessageBoxManager.Instance.ShowMessageBox("THÔNG BÁO","Tạo tài khoản thành công");
                 await Task.Delay(1000);
@@ -180,7 +180,7 @@ public class RegisterUI : MonoBehaviour
             if (!ok)
                 return "Lỗi: Không kết nối được tới server.";
             await NetworkClient.Instance.SendAsync(message);
-            string response = await NetworkClient.Instance.ReceiveOnceAsync();
+            string response = await NetworkClient.Instance.WaitForPrefixAsync("REGISTER|", 5000);
             if (response == null)
                 return "Lỗi: Không nhận được dữ liệu từ server.";
             return response;
