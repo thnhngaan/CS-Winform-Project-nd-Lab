@@ -28,7 +28,6 @@ CREATE TABLE SessionDB
 (
     SessionID INT IDENTITY PRIMARY KEY,
     Username VARCHAR(50) NOT NULL,
-    Token VARCHAR(255) NOT NULL,
     LoginTime DATETIME NOT NULL DEFAULT GETDATE(),
     LogoutTime DATETIME NULL,
     FOREIGN KEY (Username) REFERENCES UserDB(Username)
@@ -47,18 +46,6 @@ CREATE TABLE ROOM (
     IsClosed     BIT          NOT NULL DEFAULT 0,           
     FOREIGN KEY (UsernameHost) REFERENCES UserDB(Username),
     FOREIGN KEY (UsernameClient) REFERENCES UserDB(Username)
-);
-
--- ROOMPARTICIPANT (DB user tham gia phòng)
-CREATE TABLE RoomParticipantDB 
-(
-    ParticipantID INT IDENTITY PRIMARY KEY,
-    RoomID INT NOT NULL,
-    Username VARCHAR(50) NOT NULL,
-    JoinTime DATETIME NOT NULL DEFAULT GETDATE(),
-    LeaveTime DATETIME NULL,
-    FOREIGN KEY (RoomID) REFERENCES RoomDB(RoomID),
-    FOREIGN KEY (Username) REFERENCES UserDB(Username)
 );
 
 -- MATCH (DB trận đấu)

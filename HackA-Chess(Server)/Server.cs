@@ -103,6 +103,7 @@ namespace HackA_Chess_Server_
         private void TCPServer_Load(object sender, EventArgs e)
         {
             StartServer();
+            
         }
 
 
@@ -167,6 +168,13 @@ namespace HackA_Chess_Server_
                             //format:LOGIN|username|password
                             string username = parts[1];
                             string password = parts[2];
+                            if (OnlineUsers.ContainsKey(username))
+                            {
+                                byte[] usernameexist = Encoding.UTF8.GetBytes("Login failed|Tài khoản của bạn đã được đăng nhập ở nơi khác");
+                                AppendText($"Tài khoản {username} đang đăng nhập trong server");
+                                await stream.WriteAsync(usernameexist, 0, usernameexist.Length);
+                                break;
+                            }
 
                             bool status = CheckLogin(username, password);
                             string response = status ? "Login success" : "Login failed";
@@ -181,7 +189,6 @@ namespace HackA_Chess_Server_
                                 isLogin = true;
                                 currentUsername = username;
                                 AppendText($"Client {clientEP} đăng nhập thành công.");
-
                                 lock (OnlineUsers)
                                 {
                                     OnlineUsers[currentUsername] = client; // Lưu client theo username
@@ -241,11 +248,21 @@ namespace HackA_Chess_Server_
                     while (client.Connected) //còn vòng while này dành cho các tác vụ khác khi đã login vào server và nó sẽ giữ connected cho đến khi logout
                     {
                         string msg = await ReceiveMessage(stream);
-                        if (msg == null) continue;
+                        if (msg == null)
+                        {
+                            break;
+                        }
                         AppendText($"[Đã đăng nhập] {clientEP}: {msg}");
                         string[] parts = msg.Split('|');
                         if (parts[0] == "LOGOUT")
                         {
+                            if (!string.IsNullOrEmpty(currentUsername))
+                            {
+                                lock (OnlineUsers)
+                                {
+                                    OnlineUsers.Remove(currentUsername);
+                                }
+                            }
                             string response = "Logout success";
                             byte[] responsebytes = Encoding.UTF8.GetBytes(response);
                             await stream.WriteAsync(responsebytes, 0, responsebytes.Length);
@@ -706,7 +723,7 @@ namespace HackA_Chess_Server_
 
         #region LAN 
         // trong class Server
-        private static readonly Dictionary<string, TcpClient> OnlineUsers = new();
+        private static readonly Dictionary<string, TcpClient> OnlineUsers = new(); 
 
         private async Task StartGameForRoomAsync(string roomId)
         {
@@ -820,6 +837,61 @@ WHERE RoomID = @id";
             }
         }
         #endregion
+        #region Raking
+        private static List<(string Username, string Fullname, int Elo, int TotalWin, int TotalDraw, int TotalLoss)> GetLeaderboardPage(int page, int pageSize, out int totalCount)
+        {
+            var list = new List<(string, string, int, int, int, int)>();
+            totalCount = 0;
 
+            if (page < 1) page = 1;
+            if (pageSize <= 0) pageSize = 10;
+
+            int offset = (page - 1) * pageSize;
+
+            using (var conn = Connection.GetSqlConnection())
+            {
+                conn.Open();
+
+                //lấy tổng số user  có trong server
+                using (var cmdCount = new SqlCommand("SELECT COUNT(*) FROM UserDB;", conn))
+                {
+                    totalCount = (int)cmdCount.ExecuteScalar();
+                }
+
+                if (totalCount == 0)
+                    return list;
+
+                //lấy 1 trang user theo 1 trang
+                string sql = @"SELECT Username, Fullname, Elo, TotalWin, TotalDraw, TotalLoss
+                               FROM UserDB
+                               ORDER BY Elo DESC, TotalWin DESC, Username ASC
+                               OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY;";
+
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@offset", offset);
+                    cmd.Parameters.AddWithValue("@pageSize", pageSize);
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+
+                            string username = reader["Username"].ToString();
+                            string fullname = reader["Fullname"].ToString();
+                            int elo = reader["Elo"] != DBNull.Value ? Convert.ToInt32(reader["Elo"]) : 1200;
+                            int win = reader["TotalWin"] != DBNull.Value ? Convert.ToInt32(reader["TotalWin"]) : 0;
+                            int draw = reader["TotalDraw"] != DBNull.Value ? Convert.ToInt32(reader["TotalDraw"]) : 0;
+                            int loss = reader["TotalLoss"] != DBNull.Value ? Convert.ToInt32(reader["TotalLoss"]) : 0;
+
+                            list.Add((username, fullname, elo, win, draw, loss));
+                        }
+                    }
+                }
+            }
+
+            return list;
+        }
+        #endregion
     }
 }

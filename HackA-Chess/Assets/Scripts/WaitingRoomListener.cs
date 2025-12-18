@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using TMPro;
 using System.Threading.Tasks;
-using Assets.Scripts; // ← THÊM DÒNG NÀY
+using Assets.Scripts;
 
 public class WaitingRoomListener : MonoBehaviour
 {
@@ -70,7 +70,6 @@ public class WaitingRoomListener : MonoBehaviour
 
             // Đẩy xử lý về main thread
             HandleServerMessage(msg);
-
 
             // Nếu đã nhận GAME_START rồi thì NÓI TẠM BIỆT, không đọc thêm nữa.
             if (isGameStart)
