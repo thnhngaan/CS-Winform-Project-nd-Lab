@@ -72,3 +72,13 @@ CREATE TABLE MatchMoveDB (
     TimeStamp DATETIME DEFAULT GETDATE(),
     FOREIGN KEY (MatchID) REFERENCES MatchDB(MatchID)
 );
+
+USE HackAChessDB
+GO
+ALTER TABLE ROOM ADD Password CHAR(4)
+ALTER TABLE ROOM
+ADD CONSTRAINT CK_ROOM_Pass
+CHECK (
+    (IsPublic = 1 AND Password IS NULL)
+ OR (IsPublic = 0 AND Password IS NOT NULL)
+);

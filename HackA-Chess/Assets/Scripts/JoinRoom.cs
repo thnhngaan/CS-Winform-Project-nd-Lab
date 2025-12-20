@@ -1,6 +1,7 @@
 ﻿
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -18,7 +19,7 @@ namespace Assets.Scripts
 {
     public class JoinRoom : MonoBehaviour
     {
-
+       
         [SerializeField] private TMP_FontAsset roomItemFont;
 
 
@@ -51,6 +52,11 @@ namespace Assets.Scripts
         [Header("Create ID")]
         [SerializeField] private GameObject CreateID_Panel;
 
+        [Header("Password (Private)")]
+        [SerializeField] private GameObject Password_CreateID_Panel;
+        [SerializeField] private TMP_InputField Password_CreateID_input;
+
+
         //Status (ToggleGroup - Toggles)
         [SerializeField] private ToggleGroup Status_CreateID_togglegroup;
         [SerializeField] private Toggle StatusPublic_CreateID_toggle;
@@ -81,6 +87,7 @@ namespace Assets.Scripts
         private readonly List<GameObject> _spawnedListItems = new();
         private string _selectedRoomId = null;
         [SerializeField] private bool autoListOnStart = true;
+
 
         private void Awake()
         {
@@ -125,13 +132,28 @@ namespace Assets.Scripts
                 Create_CreateID_button.onClick.AddListener(OnCreate_CreatID_buttonClicked);
             }
 
-            if (Join_CreateID_button != null) Join_CreateID_button.onClick.AddListener(OnJoin_CreateID_buttonClicked); 
+            if (Join_CreateID_button != null) Join_CreateID_button.onClick.AddListener(OnJoin_CreateID_buttonClicked);
 
             // Status toggles (Create_ID)
             if (StatusPublic_CreateID_toggle != null)
-                StatusPublic_CreateID_toggle.onValueChanged.AddListener(isOn => { if (isOn) status = "public"; });
+                StatusPublic_CreateID_toggle.onValueChanged.AddListener(isOn =>
+                {
+                    if (isOn)
+                    {
+                        status = "public";
+                        RefreshPasswordUI();
+                    }
+                });
+
             if (StatusPrivate_CreateID_toggle != null)
-                StatusPrivate_CreateID_toggle.onValueChanged.AddListener(isOn => { if (isOn) status = "private"; });
+                StatusPrivate_CreateID_toggle.onValueChanged.AddListener(isOn =>
+                {
+                    if (isOn)
+                    {
+                        status = "private";
+                        RefreshPasswordUI();
+                    }
+                });
 
             // Đóng cả 3 panel
             CloseAllPanels();
@@ -273,17 +295,9 @@ namespace Assets.Scripts
             // Đóng 3 panel
             CreateID_Panel.transform.SetAsLastSibling();           
             CreateID_Panel.SetActive(true);
-
-            if (ID_CreateID_inputfield != null)
-            {
-                ID_CreateID_inputfield.text = string.Empty;
-                ID_CreateID_inputfield.textComponent.color = Color.black;
-                ID_CreateID_inputfield.ActivateInputField();
-            }
-
             if (StatusPublic_CreateID_toggle != null) StatusPublic_CreateID_toggle.isOn = true;
             status = GetStatusFromGroup();
-
+            RefreshPasswordUI();
 
         }
 
@@ -302,10 +316,27 @@ namespace Assets.Scripts
         private async void OnCreate_CreatID_buttonClicked()
         {
             status = GetStatusFromGroup();
-            ShowMessage($"Đang gửi yêu cầu CREATE ({status})...");
+            string result;
 
-            string result = await SendMessageAsync($"CREATE|{status}","CREATE|");
-            HandleResponse_Create(result); 
+            string pass = (Password_CreateID_input.text ?? "").Trim();
+
+            // đúng yêu cầu: 4 chữ số
+            if (pass.Length != 4 || !pass.All(char.IsDigit))
+            {
+                MessageBoxManager.Instance.ShowMessageBox("BÁO LỖI", "Password phải đúng 4 chữ số.");
+                Password_CreateID_input.ActivateInputField();
+                return;
+            }
+
+            ShowMessage("Đang gửi yêu cầu CREATE (private)...");
+            result = await SendMessageAsync($"CREATE|private|{pass}", "CREATE|");
+            HandleResponse_Create(result);
+            return;
+
+
+            ShowMessage($"Đang gửi yêu cầu CREATE ({status})...");
+            result = await SendMessageAsync($"CREATE|{status}", "CREATE|");
+            HandleResponse_Create(result);
         }
 
         //  CreateID_Panel (Join_CreateID_button)
@@ -683,7 +714,27 @@ namespace Assets.Scripts
             _spawnedListItems.Clear();
         }
 
-        //  
+        private void RefreshPasswordUI()
+        {
+            string s = GetStatusFromGroup();
+            bool isPrivate = s.Equals("private", StringComparison.OrdinalIgnoreCase);
+
+            if (Password_CreateID_Panel != null)
+                Password_CreateID_Panel.SetActive(isPrivate);
+
+            if (isPrivate && Password_CreateID_input != null)
+            {
+                // setup cho pass 4 số
+                Password_CreateID_input.characterLimit = 4;
+                Password_CreateID_input.contentType = TMP_InputField.ContentType.IntegerNumber;
+
+                Password_CreateID_input.text = "";
+                Password_CreateID_input.ActivateInputField(); 
+            }
+            if (!isPrivate && Password_CreateID_input != null)
+                Password_CreateID_input.text = ""; //public thì xoá
+        }
+
         private string GetStatusFromGroup()
         {
             if (Status_CreateID_togglegroup != null)
