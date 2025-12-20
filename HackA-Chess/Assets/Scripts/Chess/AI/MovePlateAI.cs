@@ -1,0 +1,127 @@
+﻿using UnityEngine;
+
+public class MovePlateAI : MonoBehaviour // Hàm hiện bước đi
+{
+    private GameAI gameController;
+    private GameObject controller;
+    private GameObject reference;
+
+    int matrixX;
+    int matrixY;
+
+    public bool attack = false;
+
+    public bool isCastling = false;
+    public int rookFromX, rookFromY;
+    public int rookToX, rookToY;
+
+    void Start()
+    {
+        GameObject controllerObj = GameObject.FindGameObjectWithTag("GameController");
+        if (controllerObj != null)
+        {
+            //gameController = controllerObj.GetComponent<Game>();
+            gameController = controllerObj.GetComponent<GameAI>();
+
+        }
+        else
+        {
+            Debug.LogError("Không tìm thấy GameObject với tag 'GameController'!");
+        }
+
+        if (attack)
+        {
+            GetComponent<SpriteRenderer>().color = new Color(1f, 0f, 0f, 1f);
+        }
+    }
+
+    public void OnMouseUp()
+    {
+        if (gameController == null) return;
+        var col = GetComponent<Collider2D>();
+        if (col != null) col.enabled = false;
+
+        if (reference == null) return;
+        ChessmanAI cm = reference.GetComponent<ChessmanAI>();
+        if (cm == null) return;
+
+        cm.DestroyMovePlates();
+
+        bool gameEnded = false;
+
+        if (attack)
+        {
+            GameObject cp = gameController.GetPosition(matrixX, matrixY);
+            if (cp != null)
+            {
+                gameController.SetPositionEmpty(matrixX, matrixY);
+
+                if (cp.name == "chess_white_king") { gameController.Winner("black"); gameEnded = true; }
+                if (cp.name == "chess_black_king") { gameController.Winner("white"); gameEnded = true; }
+
+                Destroy(cp);
+            }
+        }
+
+        if (isCastling)
+        {
+            GameObject rook = gameController.GetPosition(rookFromX, rookFromY);
+            if (rook != null)
+            {
+                gameController.SetPositionEmpty(rookFromX, rookFromY);
+                ChessmanAI rookCm = rook.GetComponent<ChessmanAI>();
+                rookCm.SetXBoard(rookToX);
+                rookCm.SetYBoard(rookToY);
+                rookCm.SetCoords();
+                rookCm.hasMoved = true;
+                gameController.SetPosition(rook);
+            }
+        }
+
+        gameController.SetPositionEmpty(cm.GetXBoard(), cm.GetYBoard());
+        cm.SetXBoard(matrixX);
+        cm.SetYBoard(matrixY);
+        cm.SetCoords();
+        cm.hasMoved = true;
+
+        gameController.SetPosition(reference);
+        TryPromote(cm);
+
+        if (!gameEnded)
+            gameController.NextTurn();
+    }
+
+    void TryPromote(ChessmanAI cm)
+    {
+        SpriteRenderer sr = cm.GetComponent<SpriteRenderer>();
+
+        if (cm.name == "chess_white_pawn" && cm.GetYBoard() == 7)
+        {
+            cm.name = "chess_white_queen";
+            sr.sprite = cm.chess_queen_white;
+        }
+
+        if (cm.name == "chess_black_pawn" && cm.GetYBoard() == 0)
+        {
+            cm.name = "chess_black_queen";
+            sr.sprite = cm.chess_queen_black;
+        }
+    }
+
+    public void SetCoords(int x, int y)
+    {
+        matrixX = x;
+        matrixY = y;
+    }
+
+    public void SetReference(GameObject obj)
+    {
+        controller = obj;
+        reference = obj;
+    }
+
+    public GameObject GetReference()
+    {
+        return reference;
+    }
+}
