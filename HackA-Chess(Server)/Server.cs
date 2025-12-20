@@ -19,6 +19,7 @@ using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 using System.Security.Cryptography.Pkcs;
 using System.Diagnostics.Eventing.Reader;
+using System.Web;
 
 namespace HackA_Chess_Server_
 {
@@ -267,7 +268,7 @@ namespace HackA_Chess_Server_
                                     OnlineUsers.Remove(KeyUser(currentUsername));
                                 }
                             }
-                            string response = "Logout success";
+                            string response = "LOGOUT|SUCCESS";
                             byte[] responsebytes = Encoding.UTF8.GetBytes(response);
                             await stream.WriteAsync(responsebytes, 0, responsebytes.Length);
                             return;
@@ -321,12 +322,12 @@ namespace HackA_Chess_Server_
                         }
                         if (parts[0].Trim() == "ListRoom")
                         {
-                            var rooms = GetPublicRooms();  // giờ trả về RoomID, NumberPlayer, HostUsername, HostElo
+                            var rooms = GetListRooms();  // giờ trả về RoomID, NumberPlayer, HostUsername,isPublic, HostElo
                             var sb = new StringBuilder("ListRoom|");
                             foreach (var room in rooms)
                             {
-                                //định dạng: RoomID,NumberPlayer,HostUsername,HostElo
-                                sb.Append($"{room.RoomID},{room.NumberPlayer},{room.HostUsername},{room.HostElo}|");
+                                //định dạng: RoomID,NumberPlayer,HostUsername,isPublic,HostElo
+                                sb.Append($"{room.RoomID},{room.NumberPlayer},{room.HostUsername},{room.status}, {room.HostElo}|");
                             }
 
                             string response = sb.ToString();  //có thể rỗng("") nếu không có phòng nào
@@ -713,19 +714,17 @@ namespace HackA_Chess_Server_
         }
 
 
-        public static List<(string RoomID, int NumberPlayer, string HostUsername, int HostElo)> GetPublicRooms()
+        public static List<(string RoomID, int NumberPlayer, string HostUsername, bool status, int HostElo)> GetListRooms()
         {
-            var list = new List<(string, int, string, int)>();
+            var list = new List<(string, int, string, bool, int)>();
 
             using (var conn = Connection.GetSqlConnection())
             {
                 conn.Open();
                 string sql = @"
-            SELECT  R.RoomID, R.NumberPlayer, R.UsernameHost, U.ELO
+            SELECT  R.RoomID, R.NumberPlayer, R.UsernameHost, R.IsPublic, U.ELO
             FROM ROOM R
-            JOIN UserDB U ON U.USERNAME = R.UsernameHost
-            WHERE R.IsPublic = 1 AND R.IsClosed = 0 AND R.RoomIsFull = 0;";
-
+            JOIN UserDB U ON U.USERNAME = R.UsernameHost";
                 using (var cmd = new SqlCommand(sql, conn))
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -734,13 +733,13 @@ namespace HackA_Chess_Server_
                         string roomId = reader["RoomID"].ToString();
                         int numberPlayer = Convert.ToInt32(reader["NumberPlayer"]);
                         string hostUsername = reader["UsernameHost"].ToString();
+                        bool isPublic = reader["IsPublic"] != DBNull.Value ? Convert.ToBoolean(reader["IsPublic"]) : false;
                         int hostElo = reader["ELO"] != DBNull.Value ? Convert.ToInt32(reader["ELO"]) : 1200;
 
-                        list.Add((roomId, numberPlayer, hostUsername, hostElo));
+                        list.Add((roomId, numberPlayer, hostUsername,isPublic, hostElo));
                     }
                 }
             }
-
             return list;
         }
 

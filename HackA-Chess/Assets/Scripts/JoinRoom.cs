@@ -1,6 +1,7 @@
 ﻿
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
@@ -317,22 +318,23 @@ namespace Assets.Scripts
         {
             status = GetStatusFromGroup();
             string result;
-
-            string pass = (Password_CreateID_input.text ?? "").Trim();
-
-            // đúng yêu cầu: 4 chữ số
-            if (pass.Length != 4 || !pass.All(char.IsDigit))
+            if (status.Equals("private", StringComparison.OrdinalIgnoreCase))
             {
-                MessageBoxManager.Instance.ShowMessageBox("BÁO LỖI", "Password phải đúng 4 chữ số.");
-                Password_CreateID_input.ActivateInputField();
+                string pass = (Password_CreateID_input.text ?? "").Trim();
+
+                // đúng yêu cầu: 4 chữ số
+                if (pass.Length != 4 || !pass.All(char.IsDigit))
+                {
+                    MessageBoxManager.Instance.ShowMessageBox("BÁO LỖI", "Password phải đúng 4 chữ số.");
+                    Password_CreateID_input.ActivateInputField();
+                    return;
+                }
+
+                ShowMessage("Đang gửi yêu cầu CREATE (private)...");
+                result = await SendMessageAsync($"CREATE|private|{pass}", "CREATE|");
+                HandleResponse_Create(result);
                 return;
             }
-
-            ShowMessage("Đang gửi yêu cầu CREATE (private)...");
-            result = await SendMessageAsync($"CREATE|private|{pass}", "CREATE|");
-            HandleResponse_Create(result);
-            return;
-
 
             ShowMessage($"Đang gửi yêu cầu CREATE ({status})...");
             result = await SendMessageAsync($"CREATE|{status}", "CREATE|");
@@ -525,7 +527,8 @@ namespace Assets.Scripts
             for (int i = 1; i < rooms.Length; i++)
             {
                 string[] room = rooms[i].Split(",");
-                AddListRoomItem(room[0], int.Parse(room[1]), room[2], int.Parse(room[3]));
+                bool isPublic = bool.TryParse(room[3], out bool b) && b;
+                AddListRoomItem(room[0], int.Parse(room[1]), room[2], isPublic, int.Parse(room[4]));
             }
         }
         private List<string> SplitLines(string block)
@@ -600,7 +603,7 @@ namespace Assets.Scripts
         }
 
         // Thêm 1 item phòng lên ListRoom_Panel HOÀN TOÀN BẰNG CODE
-        private void AddListRoomItem(string id, int count, string hostName, int hostElo)
+        private void AddListRoomItem(string id, int count, string hostName, bool isPublic, int hostElo)
         {
             if (ListRoom_Content == null)
             {
@@ -608,8 +611,10 @@ namespace Assets.Scripts
                 return;
             }
 
-            Debug.Log($"[JoinRoom] AddListRoomItem: id={id}, count={count}, host={hostName}, elo={hostElo}");
-
+            Debug.Log($"[JoinRoom] AddListRoomItem: id={id}, count={count}, host={hostName}, status={isPublic}, elo={hostElo}");
+            string status;
+            if (isPublic) status = "☺PUBLIC";
+            else status = "🔒PRIVATE";
             //Tạo GameObject gốc cho 1 dòng phòng
             var go = new GameObject($"Room_{id}", typeof(RectTransform));
             go.transform.SetParent(ListRoom_Content, false);
@@ -646,7 +651,7 @@ namespace Assets.Scripts
             var tElo = CreateTmpText(go.transform, "Text_Elo", hostElo.ToString(), TextAlignmentOptions.Left);
 
             //trạng thái
-            var sStatus = CreateTmpText(go.transform, "Text_Status", "PUBLIC", TextAlignmentOptions.Center);
+            var sStatus = CreateTmpText(go.transform, "Text_Status", status, TextAlignmentOptions.Center);
 
             //số player (ví dụ: "1/2")
             var tCount = CreateTmpText(go.transform, "Text_Count", $"{count}/2", TextAlignmentOptions.Center);
