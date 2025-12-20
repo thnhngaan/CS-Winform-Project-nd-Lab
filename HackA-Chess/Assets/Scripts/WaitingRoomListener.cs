@@ -49,17 +49,23 @@ public class WaitingRoomListener : MonoBehaviour
             idroom.text = GameSession.RoomId;
         string msg = $"GETINFO|{UserSession.CurrentUsername}";
         await NetworkClient.Instance.SendAsync(msg);
+
         string resp = await NetworkClient.Instance.WaitForPrefixAsync("GETINFO|", 5000);
+        if (string.IsNullOrEmpty(resp))
+        {
+            Debug.LogWarning("[WaitingRoomListener] GETINFO timeout");
+            return;
+        }
+
         string[] parts = resp.Split('|');
         if (parts.Length < 7 || parts[0] != "GETINFO")
         {
-            Debug.LogError($"GetInfo: Gói tin sai format. parts.Length = {parts.Length}, parts[0] = {parts[0]}");
+            Debug.LogWarning("[WaitingRoomListener] GETINFO sai format: " + resp);
             return;
         }
-        string fullNameStr = parts[1];
-        int elo = int.Parse(parts[2]);
-        string avatarPath = parts[6];
 
+        GameSession.MyFullName = parts[1];
+        Debug.Log("[WaitingRoomListener] MyFullName = " + GameSession.MyFullName);
 
     }
 

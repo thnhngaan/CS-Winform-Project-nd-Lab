@@ -363,7 +363,6 @@ namespace HackA_Chess_Server_
                             byte[] data = Encoding.UTF8.GetBytes(response);
                             await stream.WriteAsync(data, 0, data.Length);
 
-                            // ❌ KHÔNG gọi StartGameForRoomAsync ở đây nữa
                             continue;
                         }
 
@@ -398,8 +397,6 @@ namespace HackA_Chess_Server_
 
                             byte[] data = Encoding.UTF8.GetBytes(response);
                             await stream.WriteAsync(data, 0, data.Length);
-
-                            // ❌ KHÔNG gọi StartGameForRoomAsync ở đây nữa
                             continue;
                         }
                         if (parts[0] == "READY")
@@ -515,9 +512,6 @@ namespace HackA_Chess_Server_
                                     }
                                 }
                             }
-
-                            // TODO: sau này update lịch sử đấu / ELO ở đây
-
                             continue;
                         }
                         if (parts[0] == "CHATGLOBAL")
@@ -531,6 +525,66 @@ namespace HackA_Chess_Server_
                             await BroadcastGlobalChat(username, chatmsg);
                             continue;   
                         }
+                        if (parts[0] == "CHAT")
+                        {
+                            // CHAT|roomId|username|message
+                            if (parts.Length < 4)
+                                continue;
+
+                            string roomId = parts[1].Trim();
+                            string sender = parts[2].Trim();
+
+                            // message có thể chứa ký tự đặc biệt → lấy phần sau dấu | thứ 3
+                            int p1 = msg.IndexOf('|');
+                            int p2 = msg.IndexOf('|', p1 + 1);
+                            int p3 = msg.IndexOf('|', p2 + 1);
+                            if (p3 < 0) continue;
+                            string chatMsg = msg.Substring(p3 + 1).Trim();
+
+                            AppendText($"[CHAT] {sender} ({roomId}): {chatMsg}");
+
+                            // tìm đối thủ
+                            string opponent = GetOpponentOf(roomId, sender);
+
+                            // gửi lại cho chính người gửi
+                            try
+                            {
+                                string selfMsg = $"CHAT|{roomId}|{sender}|{chatMsg}\n";
+                                byte[] selfData = Encoding.UTF8.GetBytes(selfMsg);
+                                await stream.WriteAsync(selfData, 0, selfData.Length);
+                            }
+                            catch (Exception ex)
+                            {
+                                AppendText($"[CHAT] Lỗi gửi lại cho sender {sender}: {ex.Message}");
+                            }
+
+                            // gửi cho đối thủ
+                            if (!string.IsNullOrEmpty(opponent))
+                            {
+                                TcpClient oppClient = null;
+                                lock (OnlineUsers)
+                                {
+                                    OnlineUsers.TryGetValue(opponent, out oppClient);
+                                }
+
+                                if (oppClient != null && oppClient.Connected)
+                                {
+                                    try
+                                    {
+                                        string forward = $"CHAT|{roomId}|{sender}|{chatMsg}\n";
+                                        byte[] data = Encoding.UTF8.GetBytes(forward);
+                                        await oppClient.GetStream().WriteAsync(data, 0, data.Length);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        AppendText($"[CHAT] Lỗi gửi cho {opponent}: {ex.Message}");
+                                    }
+                                }
+                            }
+
+                            continue;
+                        }
+
                     }
                 }
             }
