@@ -531,6 +531,65 @@ namespace HackA_Chess_Server_
                             await BroadcastGlobalChat(username, chatmsg);
                             continue;   
                         }
+                        if (parts[0] == "RANDOM") 
+                        {
+                            // Tạo ds phòng hợp lệ để random
+                            var rooms = GetPublicRooms();
+                            var ListRoomPublic = rooms.Select(r => r.RoomID).ToList();
+                            string chosenRoomId = null;
+                            string response;
+
+                            if (ListRoomPublic.Count == 0)
+                            {
+                                response = "RANDOM|fail";
+                            }
+                            else
+                            {
+                                // Random các phòng đã có trong ds
+                                int index;
+                                lock (_rand) { index = _rand.Next(ListRoomPublic.Count); }
+                                chosenRoomId = ListRoomPublic[index];
+
+                                // Gửi phản hồi về Client
+                                // RANDOM|ID
+                                response = $"RANDOM|{chosenRoomId}";
+                            }
+
+                            byte[] respBytes = Encoding.UTF8.GetBytes(response);
+                            await stream.WriteAsync(respBytes, 0, respBytes.Length);
+
+                            AppendText($"[RANDOM] {clientEP} -> {response}");
+
+                            // Cập nhật database
+                            if (!string.IsNullOrEmpty(chosenRoomId))
+                            {
+                                using (var conn = Connection.GetSqlConnection())
+                                {
+                                    conn.Open();
+                                    string sql = @"
+                                        UPDATE ROOM
+                                        SET 
+                                            NumberPlayer = NumberPlayer + 1,
+                                            RoomIsFull   = CASE 
+                                                WHEN NumberPlayer + 1 = 2 THEN 1 
+                                                ELSE RoomIsFull 
+                                            END
+                                        WHERE RoomID = @id
+                                          AND IsClosed   = 0
+                                          AND RoomIsFull = 0
+                                          AND NumberPlayer < 2;";
+                                    using (var cmd = new SqlCommand(sql, conn))
+                                    {
+                                        cmd.Parameters.AddWithValue("@id", chosenRoomId);
+                                        int rows = cmd.ExecuteNonQuery();
+                                        AppendText($@"[RANDOM->DB] {chosenRoomId}: {(rows == 1 ? "UPDATED" : "SKIP")}");
+                                    }
+                                }
+                            }
+
+
+                            continue;
+                        }
                     }
                 }
             }
