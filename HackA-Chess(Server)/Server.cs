@@ -15,6 +15,7 @@ using System.Windows.Forms;
 using System.Collections.Concurrent;
 using HackA_Chess_Server_;
 using Microsoft.Data.SqlClient;
+using System.Security.Cryptography;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
@@ -531,10 +532,10 @@ namespace HackA_Chess_Server_
                             await BroadcastGlobalChat(username, chatmsg);
                             continue;   
                         }
-                        if (parts[0] == "RANDOM") 
+                        if (parts[0] == "RANDOM")
                         {
-                            // Tạo ds phòng hợp lệ để random
-                            var rooms = GetPublicRooms();
+                            // Tạo danh sách phòng hợp lệ để random
+                            var rooms = GetPublicRooms();   // giờ trả về RoomID, NumberPlayer, HostUsername, HostElo
                             var ListRoomPublic = rooms.Select(r => r.RoomID).ToList();
                             string chosenRoomId = null;
                             string response;
@@ -542,52 +543,31 @@ namespace HackA_Chess_Server_
                             if (ListRoomPublic.Count == 0)
                             {
                                 response = "RANDOM|fail";
+                                AppendText("Danh sách phòng trống");
+                                AppendText("RANDOM|fail\n");
                             }
                             else
                             {
-                                // Random các phòng đã có trong ds
-                                int index;
-                                lock (_rand) { index = _rand.Next(ListRoomPublic.Count); }
-                                chosenRoomId = ListRoomPublic[index];
+                                // Random các phòng đã có trong danh sách
+                                var rand = new Random();
+                                int randomNumber = rand.Next(0, ListRoomPublic.Count);
+                                chosenRoomId = ListRoomPublic[randomNumber];
 
-                                // Gửi phản hồi về Client
                                 // RANDOM|ID
-                                response = $"RANDOM|{chosenRoomId}";
+                                if (string.IsNullOrEmpty(chosenRoomId))
+                                {
+                                    AppendText("Dữ liệu trống sau khi đã random");
+                                    response = "RANDOM|fail";
+                                    AppendText("RANDOM|fail\n");
+                                }
+                                else response = $"RANDOM|{chosenRoomId}\n";
                             }
 
+                            // Gửi phản hồi về Client
                             byte[] respBytes = Encoding.UTF8.GetBytes(response);
                             await stream.WriteAsync(respBytes, 0, respBytes.Length);
 
-                            AppendText($"[RANDOM] {clientEP} -> {response}");
-
-                            // Cập nhật database
-                            if (!string.IsNullOrEmpty(chosenRoomId))
-                            {
-                                using (var conn = Connection.GetSqlConnection())
-                                {
-                                    conn.Open();
-                                    string sql = @"
-                                        UPDATE ROOM
-                                        SET 
-                                            NumberPlayer = NumberPlayer + 1,
-                                            RoomIsFull   = CASE 
-                                                WHEN NumberPlayer + 1 = 2 THEN 1 
-                                                ELSE RoomIsFull 
-                                            END
-                                        WHERE RoomID = @id
-                                          AND IsClosed   = 0
-                                          AND RoomIsFull = 0
-                                          AND NumberPlayer < 2;";
-                                    using (var cmd = new SqlCommand(sql, conn))
-                                    {
-                                        cmd.Parameters.AddWithValue("@id", chosenRoomId);
-                                        int rows = cmd.ExecuteNonQuery();
-                                        AppendText($@"[RANDOM->DB] {chosenRoomId}: {(rows == 1 ? "UPDATED" : "SKIP")}");
-                                    }
-                                }
-                            }
-
-
+                            AppendText($"RANDOM|{chosenRoomId}");
                             continue;
                         }
                     }
