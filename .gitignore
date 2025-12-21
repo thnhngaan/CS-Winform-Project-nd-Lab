@@ -1,6 +1,9 @@
 #################
 ## Eclipse
 #################
+# Unity local editor stuff
+HackA-Chess/UserSettings/
+HackA-Chess/Assets/_Recovery/
 
 *.pydevproject
 .project

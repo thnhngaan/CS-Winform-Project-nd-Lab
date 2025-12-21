@@ -208,6 +208,7 @@ public class Game : MonoBehaviour // Hàm quản lí bàn cờ
 
         gameOverUI.ShowGameOver(playerWinner);
     }
+    // overload cũ để code cũ vẫn xài được
 
     public void Winner(string playerWinner)
     {
@@ -217,4 +218,3 @@ public class Game : MonoBehaviour // Hàm quản lí bàn cờ
     public GameOverScreen  gameOverUI;
 
 }
- 
