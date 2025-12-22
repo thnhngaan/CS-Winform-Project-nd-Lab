@@ -1,23 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
+﻿using Microsoft.Data.SqlClient;
+using System.Collections.Concurrent;
 using System.Data;
-using System.Drawing;
-using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Runtime.CompilerServices;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using System.Collections.Concurrent;
-using HackA_Chess_Server_;
-using Microsoft.Data.SqlClient;
-using System.Security.Cryptography;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
 namespace HackA_Chess_Server_
 {
@@ -155,6 +141,8 @@ namespace HackA_Chess_Server_
                     while (client.Connected && !isLogin) //vòng while này để kết nối 1 lần rồi close dành cho login và register
                     {
                         string data = await ReceiveMessage(stream);
+                        if (string.IsNullOrWhiteSpace(data)) break;
+
                         data.Trim();
                         if (data == null) break;
                         AppendText($"Client ({clientEP}) gửi 1 thông điệp: {data}");
@@ -257,6 +245,7 @@ namespace HackA_Chess_Server_
                         }
                         AppendText($"[Đã đăng nhập] {clientEP}: {msg}");
                         string[] parts = msg.Split('|');
+
                         if (parts[0] == "LOGOUT")
                         {
                             if (!string.IsNullOrEmpty(currentUsername))
@@ -532,43 +521,58 @@ namespace HackA_Chess_Server_
                             await BroadcastGlobalChat(username, chatmsg);
                             continue;   
                         }
-                        if (parts[0] == "RANDOM")
+
+                        if (parts[0].Trim() == "RANDOM")
                         {
-                            // Tạo danh sách phòng hợp lệ để random
-                            var rooms = GetPublicRooms();   // giờ trả về RoomID, NumberPlayer, HostUsername, HostElo
-                            var ListRoomPublic = rooms.Select(r => r.RoomID).ToList();
                             string chosenRoomId = null;
                             string response;
 
-                            if (ListRoomPublic.Count == 0)
+                            // Lấy trực tiếp 1 RoomID hợp lệ từ DB bằng random ở phía SQL
+                            try
                             {
-                                response = "RANDOM|fail";
+                                using (var conn = Connection.GetSqlConnection())
+                                {
+                                    conn.Open();
+                                    string sql = @"
+                                        SELECT TOP 1 RoomID
+                                        FROM ROOM
+                                        WHERE IsPublic = 1
+                                          AND IsClosed = 0
+                                          AND RoomIsFull = 0
+                                        ORDER BY NEWID();";
+
+                                    using (var cmd = new SqlCommand(sql, conn))
+                                    {
+                                        object result = cmd.ExecuteScalar();
+                                        chosenRoomId = result?.ToString();
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                AppendText("[RANDOM] Lỗi truy vấn DB: " + ex.Message);
+                                chosenRoomId = null;
+                            }
+
+                            // RANDOM|ID hoặc fail nếu không có phòng nào hợp lệ
+                            if (string.IsNullOrEmpty(chosenRoomId))
+                            {
+                                response = "RANDOM|fail\n";
                                 AppendText("Danh sách phòng trống");
-                                AppendText("RANDOM|fail\n");
+                                AppendText("RANDOM|fail");
                             }
                             else
                             {
-                                // Random các phòng đã có trong danh sách
-                                var rand = new Random();
-                                int randomNumber = rand.Next(0, ListRoomPublic.Count);
-                                chosenRoomId = ListRoomPublic[randomNumber];
-
-                                // RANDOM|ID
-                                if (string.IsNullOrEmpty(chosenRoomId))
-                                {
-                                    AppendText("Dữ liệu trống sau khi đã random");
-                                    response = "RANDOM|fail";
-                                    AppendText("RANDOM|fail\n");
-                                }
-                                else response = $"RANDOM|{chosenRoomId}\n";
+                                response = $"RANDOM|{chosenRoomId}\n";
                             }
 
                             // Gửi phản hồi về Client
                             byte[] respBytes = Encoding.UTF8.GetBytes(response);
                             await stream.WriteAsync(respBytes, 0, respBytes.Length);
 
-                            AppendText($"RANDOM|{chosenRoomId}");
+                            AppendText($"{response}");
                             continue;
+
                         }
                     }
                 }

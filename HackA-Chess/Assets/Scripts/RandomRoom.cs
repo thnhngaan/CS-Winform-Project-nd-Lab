@@ -1,5 +1,5 @@
-﻿using System;
-using System.Net.Sockets;
+﻿
+using System;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -11,34 +11,36 @@ namespace Assets.Scripts
 {
     public class RandomRoom : MonoBehaviour
     {
-        private string idroom = "";
-
-        [Header("Cấu hình Server")]
-        public string ip = "127.0.0.1";
-        public int port = 8080;
-
-        [Header("Timeout (ms)")]
-        public int connectTimeoutMs = 5000; // thời gian chờ kết nối
-        public int readTimeoutMs = 5000;    // thời gian chờ đọc phản hồi
-
         [Header("UI")]
         [SerializeField] public Button autoJoinButton;
-
 
         [Header("Next Scene")]
         [SerializeField] private string waitingroomScene = "WaitingRoom";
 
+        [Header("Timeout (ms)")]
+        public int requestTimeoutMs = 5000; // chờ phản hồi mỗi lệnh
+
+        private void SetStatus(string msg) => Debug.Log(msg);
+        private void RestoreButton() { if (autoJoinButton) autoJoinButton.interactable = true; }
+
+        // --- ENTRY từ Button ---
         public async void OnAutoJoinClick()
         {
             if (autoJoinButton) autoJoinButton.interactable = false;
-            SetStatus("Đang ghép…");
+            SetStatus("Đang ghép ngẫu nhiên…");
 
             try
             {
-                // RANDOM và nhận response
-                string randomResp = await SendReqAsync("RANDOM\n");
+                // Kiểm tra trạng thái kết nối đã có sẵn
+                if (!IsConnected())
+                {
+                    SetStatus("Chưa có kết nối TCP tới server (NetworkClient chưa sẵn sàng).");
+                    RestoreButton();
+                    return;
+                }
 
-                var (randOk, matchId, randMsg) = HandleRandomResponse(randomResp);
+                // RANDOM
+                var (randOk, matchId, randMsg) = await DoRandomAsync();
                 if (!randOk)
                 {
                     SetStatus(randMsg);
@@ -46,26 +48,19 @@ namespace Assets.Scripts
                     return;
                 }
 
-                // Lưu ID và PlayerPrefs
-                idroom = matchId;
-                PlayerPrefs.SetString("MatchId", matchId);
-                PlayerPrefs.Save();
-
-                SetStatus($"Đã chọn phòng {matchId}. Đang gửi JOIN…");
-
-                // JOIN|id và nhận response
-                string joinResp = await SendReqAsync($"JOIN|{matchId}\n");
-
-                var (joinOk, joinMsg) = HandleJoinResponse(joinResp);
+                // JOIN
+                SetStatus($"Đã chọn phòng {matchId}. Đang JOIN…");
+                var joinOk = await DoJoinAsync(matchId);
                 if (!joinOk)
                 {
-                    SetStatus(joinMsg);
+                    SetStatus("JOIN thất bại.");
                     RestoreButton();
                     return;
                 }
 
-                // Thành công: chuyển scene
-                SetStatus($"Gia nhập thành công! ID: {matchId}. Đang chuyển…");
+                PlayerPrefs.SetString("MatchId", matchId);
+                PlayerPrefs.Save();
+                SetStatus($"Gia nhập thành công! ID: {matchId}. Chuyển scene…");
                 SceneManager.LoadScene(waitingroomScene, LoadSceneMode.Single);
             }
             catch (TimeoutException tex)
@@ -75,63 +70,30 @@ namespace Assets.Scripts
             }
             catch (Exception ex)
             {
-                SetStatus("Lỗi kết nối: " + ex.Message);
+                SetStatus("Lỗi: " + ex.Message);
                 RestoreButton();
             }
         }
 
-
-        private async Task<string> SendReqAsync(string request)
+        // Sử dụng NetworkClient.Instance đã kết nối
+        private bool IsConnected()
         {
-            // Bảo đảm request luôn kết thúc bằng newline đúng protocol
-            if (!request.EndsWith("\n")) request += "\n";
-
-            using (var client = new TcpClient())
-            {
-                // Timeout cho CONNECT
-                var connectTask = client.ConnectAsync(ip, port);
-                var connectDelay = Task.Delay(connectTimeoutMs);
-                var connectWinner = await Task.WhenAny(connectTask, connectDelay);
-
-                if (connectWinner != connectTask || !client.Connected)
-                    throw new TimeoutException($"Không thể kết nối {ip}:{port} trong {connectTimeoutMs}ms");
-
-                using (var stream = client.GetStream())
-                {
-                    // Ghi
-                    byte[] toSend = Encoding.UTF8.GetBytes(request);
-                    await stream.WriteAsync(toSend, 0, toSend.Length);
-                    await stream.FlushAsync();
-
-                    // Đọc với timeout
-                    byte[] buffer = new byte[1024];
-                    var readTask = stream.ReadAsync(buffer, 0, buffer.Length);
-                    var readDelay = Task.Delay(readTimeoutMs);
-                    var readWinner = await Task.WhenAny(readTask, readDelay);
-
-                    if (readWinner != readTask)
-                        throw new TimeoutException($"Không nhận phản hồi từ server trong {readTimeoutMs}ms");
-
-                    int bytes = readTask.Result;
-                    if (bytes <= 0)
-                        throw new System.IO.IOException("Server đóng kết nối mà không gửi dữ liệu.");
-
-                    return Encoding.UTF8.GetString(buffer, 0, bytes).Trim();
-                }
-            }
+            return NetworkClient.Instance != null && NetworkClient.Instance.IsConnected;
         }
 
-        private (bool ok, string id, string message) HandleRandomResponse(string resp)
+        private async Task<(bool ok, string id, string message)> DoRandomAsync()
         {
-            if (string.IsNullOrWhiteSpace(resp))
-                return (false, "", "Phản hồi rỗng từ server.");
+            await NetworkClient.Instance.SendAsync("RANDOM\n");
 
-            // Bỏ \r\n cuối, tách theo '|'
-            resp = resp.TrimEnd('\r', '\n').Trim();
-            var parts = resp.Split('|');
+            // Chờ phản hồi bắt đầu bằng "RANDOM|"
+            string resp = await NetworkClient.Instance.WaitForPrefixAsync("RANDOM|", requestTimeoutMs);
+            if (resp == null)
+                throw new TimeoutException($"Không nhận phản hồi RANDOM trong {requestTimeoutMs}ms");
 
+            resp = resp.Trim();         
+            var parts = resp.Split('|');       
             if (parts.Length < 2)
-                return (false, "", "Phản hồi không hợp lệ: " + resp);
+                return (false, "", "Phản hồi RANDOM không hợp lệ: " + resp);
 
             var head = parts[0].Trim();
             var payload = parts[1].Trim();
@@ -142,47 +104,34 @@ namespace Assets.Scripts
             if (string.Equals(payload, "fail", StringComparison.OrdinalIgnoreCase))
                 return (false, "", "Không tìm được phòng để ghép.");
 
+            // ID 6 chữ số
             if (!Regex.IsMatch(payload, @"^\d{6}$"))
                 return (false, "", "ID phòng nhận về không hợp lệ: " + payload);
 
-            // Hợp lệ: trả về id
             return (true, payload, "");
         }
 
-        private (bool ok, string message) HandleJoinResponse(string resp)
+        private async Task<bool> DoJoinAsync(string matchId)
         {
-            if (string.IsNullOrWhiteSpace(resp))
-                return (false, "Phản hồi rỗng từ server.");
+            await NetworkClient.Instance.SendAsync($"JOIN|{matchId}\n");
 
-            resp = resp.TrimEnd('\r', '\n').Trim();
+            // Chờ phản hồi bắt đầu bằng "JOIN|"
+            string resp = await NetworkClient.Instance.WaitForPrefixAsync("JOIN|", requestTimeoutMs);
+            if (resp == null)
+                throw new TimeoutException($"Không nhận phản hồi JOIN trong {requestTimeoutMs}ms");
+
+            resp = resp.Trim();        
             var parts = resp.Split('|');
-
-            if (parts.Length < 2)
-                return (false, "Phản hồi JOIN không hợp lệ: " + resp);
+            if (parts.Length < 2) return false;
 
             var head = parts[0].Trim();
             var payload = parts[1].Trim();
 
             if (!string.Equals(head, "JOIN", StringComparison.OrdinalIgnoreCase))
-                return (false, "Phản hồi JOIN không hợp lệ (HEAD khác JOIN): " + resp);
+                return false;
 
-            if (string.Equals(payload, "SUCCESS", StringComparison.OrdinalIgnoreCase))
-                return (true, "");
-
-            if (string.Equals(payload, "FAILED", StringComparison.OrdinalIgnoreCase))
-                return (false, "Gia nhập thất bại (JOIN|FAILED).");
-
-            return (false, "Phản hồi JOIN không hợp lệ: " + resp);
-        }
-
-        private void SetStatus(string msg)
-        {
-            Debug.Log(msg);
-        }
-
-        private void RestoreButton()
-        {
-            if (autoJoinButton) autoJoinButton.interactable = true;
+            return string.Equals(payload, "SUCCESS", StringComparison.OrdinalIgnoreCase);
         }
     }
 }
+
