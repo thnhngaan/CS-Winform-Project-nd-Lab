@@ -69,15 +69,15 @@ public class WaitingRoomListener : MonoBehaviour
         if (idroom != null) idroom.text = GameSession.RoomId;
 
     }
-    private void OnEnable()
+    private async void OnEnable()
     {
         ReadySent = false;
         Subscribe();
         if (Ready != null) Ready.interactable = true;
         InfoRequested.Clear();
 
-        NetworkClient.Instance.OnLine -= OnServerLine;
-        NetworkClient.Instance.OnLine += OnServerLine;
+        if (NetworkClient.Instance != null && NetworkClient.Instance.IsConnected && !string.IsNullOrEmpty(GameSession.RoomId))
+            await NetworkClient.Instance.SendAsync($"ROOM_INFO|{GameSession.RoomId}");
     }
     private void OnDisable()
     {
