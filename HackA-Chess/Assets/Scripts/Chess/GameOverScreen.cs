@@ -4,8 +4,8 @@ using UnityEngine.SceneManagement;
 
 public class GameOverScreen : MonoBehaviour
 {
-    public GameObject panel;      
-    public TMP_Text winnerText;    
+    public GameObject panel;
+    public TMP_Text winnerText;
     public GameObject user1;
     public GameObject user2;
     public GameObject message;
