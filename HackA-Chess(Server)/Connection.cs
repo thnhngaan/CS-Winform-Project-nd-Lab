@@ -9,7 +9,7 @@ namespace HackA_Chess_Server_
 {
     internal class Connection
     {
-        private static string stringConnection = @"Data Source=localhost;Initial Catalog=HackAChessDB;Integrated Security=True;Encrypt=True;Trust Server Certificate=True";
+        private static string stringConnection = @"Data Source=localhost;Initial Catalog=HackAChessDB;Integrated Security=True;Trust Server Certificate=True";
         public static SqlConnection GetSqlConnection()
         {
             return new SqlConnection(stringConnection);

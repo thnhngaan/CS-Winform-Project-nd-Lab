@@ -454,22 +454,23 @@ namespace Assets.Scripts
         //Gửi/nhận thông điệp
         private async Task<string> SendMessageAsync(string message, string waitPrefix = null, int timeoutMs = 5000)
         {
-            waitPrefix.Trim(); 
             try
             {
+                if (string.IsNullOrWhiteSpace(waitPrefix))
+                    return "Lỗi: waitPrefix không được rỗng.";
+
                 if (!NetworkClient.Instance.IsConnected)
                     return "Lỗi: Chưa kết nối tới server";
 
                 await NetworkClient.Instance.SendAsync(message);
 
-                string prefix = waitPrefix ?? string.Empty;
-
+                string prefix = waitPrefix.Trim();
                 string response = await NetworkClient.Instance.WaitForPrefixAsync(prefix, timeoutMs);
 
                 if (string.IsNullOrEmpty(response))
                     return "Lỗi: Không nhận được dữ liệu (timeout hoặc mất kết nối).";
 
-                return response;
+                return response.Trim();
             }
             catch (Exception ex)
             {
@@ -477,6 +478,7 @@ namespace Assets.Scripts
                 return $"Lỗi: {ex.Message}";
             }
         }
+
 
         //  LIST ROOM: gọi server & render
         private async Task LoadListRoomAsync() 

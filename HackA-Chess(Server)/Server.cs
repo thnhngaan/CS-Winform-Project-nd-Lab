@@ -17,6 +17,9 @@ using HackA_Chess_Server_;
 using Microsoft.Data.SqlClient;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
+using System.Security.Cryptography.Pkcs;
+using System.Diagnostics.Eventing.Reader;
+using System.Web;
 
 namespace HackA_Chess_Server_
 {
@@ -104,7 +107,7 @@ namespace HackA_Chess_Server_
         private void TCPServer_Load(object sender, EventArgs e)
         {
             StartServer();
-            
+
         }
 
 
@@ -170,7 +173,7 @@ namespace HackA_Chess_Server_
                             //format:LOGIN|username|password
                             string username = parts[1].Trim();
                             string password = parts[2].Trim();
-                            if (OnlineUsers.ContainsKey(username))
+                            if (OnlineUsers.ContainsKey(KeyUser(username)))
                             {
                                 byte[] usernameexist = Encoding.UTF8.GetBytes("LOGIN|FAILED_Tài khoản của bạn đã được đăng nhập ở nơi khác\n");
                                 AppendText($"Tài khoản {username} đang đăng nhập trong server");
@@ -193,7 +196,7 @@ namespace HackA_Chess_Server_
                                 AppendText($"Client {clientEP} đăng nhập thành công.");
                                 lock (OnlineUsers)
                                 {
-                                    OnlineUsers[currentUsername] = client; // Lưu client theo username
+                                    OnlineUsers[KeyUser(currentUsername)] = client;
                                 }
                                 break;
                             }
@@ -262,10 +265,10 @@ namespace HackA_Chess_Server_
                             {
                                 lock (OnlineUsers)
                                 {
-                                    OnlineUsers.Remove(currentUsername);
+                                    OnlineUsers.Remove(KeyUser(currentUsername));
                                 }
                             }
-                            string response = "Logout success";
+                            string response = "LOGOUT|SUCCESS";
                             byte[] responsebytes = Encoding.UTF8.GetBytes(response);
                             await stream.WriteAsync(responsebytes, 0, responsebytes.Length);
                             return;
@@ -290,12 +293,18 @@ namespace HackA_Chess_Server_
                                 await stream.WriteAsync(respBytes, 0, respBytes.Length);
                                 continue;
                             }
+                            string status = "", password = "";
+                            if (parts.Length == 2)
+                            {
+                                status = parts[1].Trim();
+                            }
+                            if (parts.Length == 3)
+                            {
+                                status = parts[1].Trim();
+                                password = parts[2].Trim();
+                            }
 
-                            string status = "public";
-                            if (parts.Length >= 2)
-                                status = parts[1].Trim().ToLower();
-
-                            string roomId = CreateRoom(currentUsername, status);
+                            string roomId = CreateRoom(currentUsername, status, password);
                             string response;
                             if (roomId != null)
                             {
@@ -308,20 +317,21 @@ namespace HackA_Chess_Server_
                             AppendText($"Server trả về ID phòng vừa tạo {response}");
                             byte[] respData = Encoding.UTF8.GetBytes(response);
                             await stream.WriteAsync(respData, 0, respData.Length);
+                            await BroadcastRoomUpdateAsync(roomId);
                             continue;
                         }
                         if (parts[0].Trim() == "ListRoom")
                         {
-                            var rooms = GetPublicRooms();  // giờ trả về RoomID, NumberPlayer, HostUsername, HostElo
+                            var rooms = GetListRooms();  // giờ trả về RoomID, NumberPlayer, HostUsername,isPublic, HostElo
                             var sb = new StringBuilder("ListRoom|");
                             foreach (var room in rooms)
                             {
-                                //định dạng: RoomID,NumberPlayer,HostUsername,HostElo
-                                sb.Append($"{room.RoomID},{room.NumberPlayer},{room.HostUsername},{room.HostElo}|");
+                                //định dạng: RoomID,NumberPlayer,HostUsername,isPublic,HostElo
+                                sb.Append($"{room.RoomID},{room.NumberPlayer},{room.HostUsername},{room.status}, {room.HostElo}|");
                             }
 
                             string response = sb.ToString();  //có thể rỗng("") nếu không có phòng nào
-                            response =response.Substring(0,response.Length - 1);
+                            response = response.Substring(0, response.Length - 1);
                             response += '\n';
                             AppendText("[SERVER] Gửi danh sách phòng:\n" + (string.IsNullOrEmpty(response) ? "(trống)" : response));
 
@@ -353,6 +363,7 @@ namespace HackA_Chess_Server_
 
                                 AppendText($"Client {clientEP} gửi msg Join với RoomID không hợp lệ: {roomId}");
                                 continue;
+
                             }
 
                             bool result = TryJoinRoom(roomId, currentUsername);
@@ -362,7 +373,7 @@ namespace HackA_Chess_Server_
 
                             byte[] data = Encoding.UTF8.GetBytes(response);
                             await stream.WriteAsync(data, 0, data.Length);
-
+                            await BroadcastRoomUpdateAsync(roomId);
                             // ❌ KHÔNG gọi StartGameForRoomAsync ở đây nữa
                             continue;
                         }
@@ -399,22 +410,15 @@ namespace HackA_Chess_Server_
                             byte[] data = Encoding.UTF8.GetBytes(response);
                             await stream.WriteAsync(data, 0, data.Length);
 
+                            await BroadcastRoomUpdateAsync(roomId);
                             // ❌ KHÔNG gọi StartGameForRoomAsync ở đây nữa
                             continue;
                         }
                         if (parts[0] == "READY")
                         {
-                            if (parts.Length < 2)
-                            {
-                                AppendText($"Client {clientEP} gửi READY không hợp lệ: {msg}");
-                                continue;
-                            }
+                            if (parts.Length < 2) continue;
+                            await HandleReadyAsync(parts[1].Trim(), currentUsername);
 
-                            string roomId = parts[1].Trim();
-                            AppendText($"[READY] {currentUsername} ready in room {roomId}");
-
-                            // Gọi hàm này: nó tự check trong DB xem room đã đủ 2 người chưa
-                            await StartGameForRoomAsync(roomId);
                             continue;
                         }
                         if (parts[0] == "MOVE")
@@ -431,7 +435,7 @@ namespace HackA_Chess_Server_
                             TcpClient oppClient = null;
                             lock (OnlineUsers)
                             {
-                                OnlineUsers.TryGetValue(opponent, out oppClient);
+                                OnlineUsers.TryGetValue(KeyUser(opponent), out oppClient);
                             }
 
                             if (oppClient != null)
@@ -470,7 +474,7 @@ namespace HackA_Chess_Server_
                             {
                                 //tránh ký tự '|' trong fullname nếu có
                                 string safeFullname = e.Fullname?.Replace("|", "/") ?? "";
-                                if(currentUsername==e.Username) sb.Append(e.Username + "(Me)").Append(',').Append(safeFullname).Append(',').Append(e.Elo).Append(',').Append(e.TotalWin).Append(',').Append(e.TotalDraw).Append(',').Append(e.TotalLoss).Append(';');
+                                if (currentUsername == e.Username) sb.Append(e.Username + "(Me)").Append(',').Append(safeFullname).Append(',').Append(e.Elo).Append(',').Append(e.TotalWin).Append(',').Append(e.TotalDraw).Append(',').Append(e.TotalLoss).Append(';');
                                 else sb.Append(e.Username).Append(',').Append(safeFullname).Append(',').Append(e.Elo).Append(',').Append(e.TotalWin).Append(',').Append(e.TotalDraw).Append(',').Append(e.TotalLoss).Append(';');
                             }
                             string dataPart = sb.ToString();
@@ -498,7 +502,7 @@ namespace HackA_Chess_Server_
                                 TcpClient oppClient = null;
                                 lock (OnlineUsers)
                                 {
-                                    OnlineUsers.TryGetValue(opponent, out oppClient);
+                                    OnlineUsers.TryGetValue(KeyUser(opponent), out oppClient);
                                 }
 
                                 if (oppClient != null)
@@ -529,7 +533,116 @@ namespace HackA_Chess_Server_
                             AppendText($"Server gửi thông điệp CHATGLOBAL|{username}|{chatmsg} lại cho tất cả các client");
 
                             await BroadcastGlobalChat(username, chatmsg);
-                            continue;   
+                            continue;
+                        }
+                        if (parts[0] == "UNREADY")
+                        {
+
+                            if (parts.Length < 2) continue;
+                            await HandleUnreadyAsync(parts[1].Trim(), currentUsername);
+
+                            continue;
+
+                        }
+                        if (parts[0] == "OUTROOM")
+                        {
+                            if (parts.Length < 2)
+                            {
+                                AppendText("[OUTROOM] invalid");
+                                continue;
+                            }
+                            string roomId = parts[1].Trim();
+                            AppendText($"[OUTROOM] {currentUsername} leave {roomId}");
+
+                            await HandleOutRoom(roomId, currentUsername);
+
+                            await SendLineAsync(client, $"OUTROOM|OK|{roomId}\n");
+                            continue;
+                        }
+                        if (parts[0] == "CHAT")
+                        {
+                            // CHAT|roomId|username|message
+                            if (parts.Length < 4) continue;
+
+                            string roomId = (parts[1] ?? "").Trim();
+                            string sender = (parts[2] ?? "").Trim();
+
+                            // lấy message phần sau dấu | thứ 3 (đúng như bạn làm)
+                            int p1 = msg.IndexOf('|');
+                            int p2 = msg.IndexOf('|', p1 + 1);
+                            int p3 = msg.IndexOf('|', p2 + 1);
+                            if (p3 < 0) continue;
+                            string chatMsg = msg.Substring(p3 + 1).Trim();
+
+                            AppendText($"[CHAT] recv sender='{sender}' room='{roomId}' msg='{chatMsg}'");
+
+                            // === 1) Echo lại cho sender (giữ như bạn) ===
+                            try
+                            {
+                                string selfMsg = $"CHAT|{roomId}|{sender}|{chatMsg}\n";
+                                byte[] selfData = Encoding.UTF8.GetBytes(selfMsg);
+                                await stream.WriteAsync(selfData, 0, selfData.Length);
+                            }
+                            catch (Exception ex)
+                            {
+                                AppendText($"[CHAT] Echo fail sender='{sender}': {ex.Message}");
+                            }
+
+                            // === 2) Tìm opponent (QUAN TRỌNG: Trim + case-insensitive) ===
+                            string opponent = GetOpponentOf(roomId, sender);
+                            opponent = (opponent ?? "").Trim();
+
+                            AppendText($"[CHAT] opponent='{opponent}'");
+
+                            // === 3) Gửi cho opponent ===
+                            if (!string.IsNullOrEmpty(opponent))
+                            {
+                                TcpClient oppClient = null;
+                                string oppKey = KeyUser(opponent);
+
+                                lock (OnlineUsers)
+                                {
+                                    AppendText("[CHAT] OnlineUsers keys: " + string.Join(",", OnlineUsers.Keys));
+                                    OnlineUsers.TryGetValue(oppKey, out oppClient);
+                                }
+
+                                AppendText($"[CHAT] opponent='{opponent}' oppKey='{oppKey}'");
+
+                                if (oppClient != null && oppClient.Connected)
+                                {
+                                    try
+                                    {
+                                        string forward = $"CHAT|{roomId}|{sender}|{chatMsg}\n";
+                                        byte[] data = Encoding.UTF8.GetBytes(forward);
+                                        await oppClient.GetStream().WriteAsync(data, 0, data.Length);
+
+                                        AppendText($"[CHAT] forwarded to '{opponent}' OK");
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        AppendText($"[CHAT] forward fail to '{opponent}': {ex.Message}");
+                                    }
+                                }
+                                else
+                                {
+                                    AppendText($"[CHAT] opponent '{opponent}' offline or not found in OnlineUsers");
+                                }
+                            }
+
+                            continue;
+                        }
+                        if (parts[0] == "ROOM_INFO")
+                        {
+                            if (parts.Length < 2) continue;
+                            await HandleRoomInfoAsync(parts[1].Trim(), client);
+                            continue;
+                        }
+
+                        if (parts[0] == "REMATCH")
+                        {
+                            if (parts.Length < 2) continue;
+                            await HandleRematchAsync(parts[1].Trim(), currentUsername);
+                            continue;
                         }
                     }
                 }
@@ -549,7 +662,7 @@ namespace HackA_Chess_Server_
                 {
                     lock (OnlineUsers)
                     {
-                        OnlineUsers.Remove(currentUsername);
+                        OnlineUsers.Remove(KeyUser(currentUsername));
                     }
                 }
                 UpdateClientList();
@@ -589,7 +702,7 @@ namespace HackA_Chess_Server_
                                 string avatar = reader["AVATAR"] != DBNull.Value ? reader["AVATAR"].ToString() : "";
 
                                 //gửi response về cho client
-                                response = $"GETINFO|{fullName}|{elo}|{totalWin}|{totalDraw}|{totalLoss}|{avatar}";
+                                response = $"GETINFO|{username}|{fullName}|{elo}|{totalWin}|{totalDraw}|{totalLoss}|{avatar}";
                             }
                         }
                     }
@@ -641,10 +754,20 @@ namespace HackA_Chess_Server_
 
         private static readonly Random _rand = new();
 
-        public static string CreateRoom(string hostUsername, string status)
+        public static string CreateRoom(string hostUsername, string status, string password)
         {
             bool isPublic = status.Equals("public", StringComparison.OrdinalIgnoreCase);
-
+            if (!isPublic)
+            {
+                password = (password ?? "").Trim();
+                if (password.Length != 4) return null;
+                for (int i = 0; i < 4; i++)
+                    if (!char.IsDigit(password[i])) return null;
+            }
+            else
+            {
+                password = null; //public thì không lưu pass
+            }
             using (var conn = Connection.GetSqlConnection())
             {
                 conn.Open();
@@ -652,49 +775,42 @@ namespace HackA_Chess_Server_
                 for (int attempts = 0; attempts < 50; attempts++)
                 {
                     string roomId = _rand.Next(0, 1_000_000).ToString("D6");
-
-                    string sql = @"INSERT INTO ROOM (RoomID, UsernameHost, NumberPlayer, RoomIsFull, IsPublic, IsClosed) VALUES (@id, @host, @num, 0, @isPublic, 0);";
-
+                    string sql = @"INSERT INTO ROOM (RoomID, UsernameHost, NumberPlayer, RoomIsFull, IsPublic, IsClosed, Password) VALUES (@id, @host, @num, 0, @isPublic, 0, @pass);";
                     using (var cmd = new SqlCommand(sql, conn))
                     {
-                        cmd.Parameters.AddWithValue("@id", roomId);
-                        cmd.Parameters.AddWithValue("@host", hostUsername);
-                        cmd.Parameters.AddWithValue("@num", 1);          // host vào là 1 player
-                        cmd.Parameters.AddWithValue("@isPublic", isPublic ? 1 : 0);
-
+                        cmd.Parameters.Add("@id", SqlDbType.Char, 6).Value = roomId;
+                        cmd.Parameters.Add("@host", SqlDbType.VarChar, 50).Value = hostUsername;
+                        cmd.Parameters.Add("@num", SqlDbType.Int).Value = 1;
+                        cmd.Parameters.Add("@isPublic", SqlDbType.Bit).Value = isPublic;
+                        cmd.Parameters.Add("@pass", SqlDbType.Char, 4).Value =
+                            (object)password ?? DBNull.Value;
                         try
                         {
                             int rows = cmd.ExecuteNonQuery();
-                            if (rows == 1)
-                                return roomId;
+                            if (rows == 1) return roomId;
                         }
                         catch (SqlException ex)
                         {
-                            // nếu trùng PK RoomID thì thử lại vòng tiếp theo
-                            if (ex.Number != 2627) // PK violation
-                                throw;
+                            if (ex.Number != 2627) throw; //trùng RoomID thì thử lại
                         }
                     }
                 }
-
                 return null;
             }
         }
 
 
-        public static List<(string RoomID, int NumberPlayer, string HostUsername, int HostElo)> GetPublicRooms()
+        public static List<(string RoomID, int NumberPlayer, string HostUsername, bool status, int HostElo)> GetListRooms()
         {
-            var list = new List<(string, int, string, int)>();
+            var list = new List<(string, int, string, bool, int)>();
 
             using (var conn = Connection.GetSqlConnection())
             {
                 conn.Open();
                 string sql = @"
-            SELECT  R.RoomID, R.NumberPlayer, R.UsernameHost, U.ELO
+            SELECT  R.RoomID, R.NumberPlayer, R.UsernameHost, R.IsPublic, U.ELO
             FROM ROOM R
-            JOIN UserDB U ON U.USERNAME = R.UsernameHost
-            WHERE R.IsPublic = 1 AND R.IsClosed = 0 AND R.RoomIsFull = 0;";
-
+            JOIN UserDB U ON U.USERNAME = R.UsernameHost";
                 using (var cmd = new SqlCommand(sql, conn))
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -703,13 +819,13 @@ namespace HackA_Chess_Server_
                         string roomId = reader["RoomID"].ToString();
                         int numberPlayer = Convert.ToInt32(reader["NumberPlayer"]);
                         string hostUsername = reader["UsernameHost"].ToString();
+                        bool isPublic = reader["IsPublic"] != DBNull.Value ? Convert.ToBoolean(reader["IsPublic"]) : false;
                         int hostElo = reader["ELO"] != DBNull.Value ? Convert.ToInt32(reader["ELO"]) : 1200;
 
-                        list.Add((roomId, numberPlayer, hostUsername, hostElo));
+                        list.Add((roomId, numberPlayer, hostUsername, isPublic, hostElo));
                     }
                 }
             }
-
             return list;
         }
 
@@ -738,96 +854,7 @@ namespace HackA_Chess_Server_
 
         #region LAN 
         // trong class Server
-        private static readonly Dictionary<string, TcpClient> OnlineUsers = new(); 
-
-        private async Task StartGameForRoomAsync(string roomId)
-        {
-            using (var conn = Connection.GetSqlConnection())
-            {
-                conn.Open();
-                string sql = @"
-SELECT UsernameHost, UsernameClient, NumberPlayer, RoomIsFull, IsClosed
-FROM ROOM
-WHERE RoomID = @id";
-
-                using (var cmd = new SqlCommand(sql, conn))
-                {
-                    cmd.Parameters.AddWithValue("@id", roomId);
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        if (!reader.Read())
-                        {
-                            AppendText($"[GAME_START] Không tìm thấy room {roomId} trong DB.");
-                            return;
-                        }
-
-                        string host = reader["UsernameHost"]?.ToString();
-                        string clientUser = reader["UsernameClient"]?.ToString();
-                        int number = Convert.ToInt32(reader["NumberPlayer"]);
-                        bool isFull = Convert.ToBoolean(reader["RoomIsFull"]);
-                        bool isClosed = Convert.ToBoolean(reader["IsClosed"]);
-
-                        // Chỉ start khi đủ 2 người, full và chưa đóng
-                        if (number != 2 || !isFull || isClosed ||
-                            string.IsNullOrEmpty(host) || string.IsNullOrEmpty(clientUser))
-                        {
-                            AppendText($"[GAME_START] Room {roomId} chưa đủ điều kiện start.");
-                            return;
-                        }
-
-                        AppendText($"[GAME_START] Room {roomId} đủ 2 người: {host} vs {clientUser}");
-
-                        // Lấy TcpClient của 2 user
-                        TcpClient hostClient = null;
-                        TcpClient clientClient = null;
-                        lock (OnlineUsers)
-                        {
-                            OnlineUsers.TryGetValue(host, out hostClient);
-                            OnlineUsers.TryGetValue(clientUser, out clientClient);
-                        }
-
-                        if (hostClient != null)
-                        {
-                            try
-                            {
-                                var s = hostClient.GetStream();
-                                string msg = $"GAME_START|white|{roomId}|{clientUser}\n";
-                                byte[] data = Encoding.UTF8.GetBytes(msg);
-                                await s.WriteAsync(data, 0, data.Length);
-                            }
-                            catch (Exception ex)
-                            {
-                                AppendText($"[GAME_START] Lỗi gửi cho host {host}: {ex.Message}");
-                            }
-                        }
-                        else
-                        {
-                            AppendText($"[GAME_START] Không tìm thấy TcpClient của host {host}.");
-                        }
-
-                        if (clientClient != null)
-                        {
-                            try
-                            {
-                                var s = clientClient.GetStream();
-                                string msg = $"GAME_START|black|{roomId}|{host}\n";
-                                byte[] data = Encoding.UTF8.GetBytes(msg);
-                                await s.WriteAsync(data, 0, data.Length);
-                            }
-                            catch (Exception ex)
-                            {
-                                AppendText($"[GAME_START] Lỗi gửi cho client {clientUser}: {ex.Message}");
-                            }
-                        }
-                        else
-                        {
-                            AppendText($"[GAME_START] Không tìm thấy TcpClient của client {clientUser}.");
-                        }
-                    }
-                }
-            }
-        }
-
+        private static readonly Dictionary<string, TcpClient> OnlineUsers = new();
         private string GetOpponentOf(string roomId, string currentUser)
         {
             using (var conn = Connection.GetSqlConnection())
@@ -919,7 +946,7 @@ WHERE RoomID = @id";
             lock (OnlineUsers)
             {
                 targets = OnlineUsers.Values.Where(c => c != null).Distinct().ToList(); //lấy danh sách clients đang online, lọc và làm sạch trước khi gửi lại broadcast
-                
+
             }
             foreach (var c in targets)
             {
@@ -940,57 +967,469 @@ WHERE RoomID = @id";
                     sem.Release();
                 }
             }
-            
+
+        }
+        #endregion
+        #region BroadcastMessage
+        private async Task BroadcastRoom(string host, string client, string line)
+        {
+            if (string.IsNullOrEmpty(host) && string.IsNullOrEmpty(client)) return;
+
+            TcpClient Host = null, Client = null;
+            lock (OnlineUsers)
+            {
+                OnlineUsers.TryGetValue(KeyUser(host), out Host);
+                OnlineUsers.TryGetValue(KeyUser(client), out Client);
+            }
+
+            await SendLineAsync(Host, line);
+            if (!string.IsNullOrEmpty(client) && KeyUser(client) != KeyUser(host))
+                await SendLineAsync(Client, line);
+
+            AppendText($"[BROADCAST] {line.Trim()}");
+        }
+        private (string host, string client)? GetRoomUsers(string roomId)
+        {
+            using var conn = Connection.GetSqlConnection();
+            conn.Open();
+            using var cmd = new SqlCommand(@"SELECT UsernameHost, UsernameClient FROM ROOM WHERE RoomID=@id", conn);
+            cmd.Parameters.AddWithValue("@id", roomId);
+            using var info = cmd.ExecuteReader();
+            if (!info.Read()) return null;
+
+            return (info["UsernameHost"]?.ToString(), info["UsernameClient"]?.ToString());
         }
 
+        private async Task HandleReadyAsync(string roomId, string currentUsername)
+        {
+            var users = GetRoomUsers(roomId);
+            if (users == null) return;
+            var (host, client) = users.Value;
 
+            //chưa đủ 2 người thì vẫn broadcast trạng thái (để UI biết)
+            if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(client))
+                return;
+
+            bool shouldStart = false;
+            bool hostReady, clientReady, running;
+
+            lock (RoomStateLock)
+            {
+                if (!RoomState.TryGetValue(roomId, out var st))
+                {
+                    st = new RoomCountdownState();
+                    RoomState[roomId] = st;
+                }
+
+                var me = KeyUser(currentUsername);
+                if (me == KeyUser(host)) st.HostReady = true;
+                else if (me == KeyUser(client)) st.ClientReady = true;
+
+                hostReady = st.HostReady;
+                clientReady = st.ClientReady;
+
+                //chỉ start 1 lần
+                if (st.HostReady && st.ClientReady && !st.CountdownRunning)
+                {
+                    st.CountdownRunning = true;
+                    st.Cts = new CancellationTokenSource();
+                    shouldStart = true;
+                }
+
+                running = st.CountdownRunning;
+            }
+
+            //gửi msg cho cả 2 
+            await BroadcastRoom(host, client,
+                $"READY_STATE|{roomId}|{(hostReady ? 1 : 0)}|{(clientReady ? 1 : 0)}|{(running ? 1 : 0)}\n");
+
+            //ko await để ko block luồng đang xử lý
+            if (shouldStart)
+                _ = RunCountdownAndStartGameAsync(roomId, host, client, 10);
+        }
+
+        private async Task HandleUnreadyAsync(string roomId, string currentUsername)
+        {
+            var users = GetRoomUsers(roomId);
+            if (users == null) return;
+            var (host, client) = users.Value;
+
+            bool needCancel = false;
+            RoomCountdownState st;
+            lock (RoomStateLock)
+            {
+                if (!RoomState.TryGetValue(roomId, out st))
+                {
+                    st = new RoomCountdownState();
+                    RoomState[roomId] = st;
+                }
+                //1 người UNREADY -> reset cả 2 về 0
+                st.HostReady = false;
+                st.ClientReady = false;
+
+                if (st.CountdownRunning)
+                {
+                    needCancel = true;
+                    st.Cts?.Cancel(); //countdown task phải có finally reset CountdownRunning/Cts
+                }
+            }
+
+            //gửi msg cho cả phòng để đồng bộ UI
+            await BroadcastRoom(host, client,
+                $"READY_STATE|{roomId}|0|0|{(st.CountdownRunning ? 1 : 0)}\n");
+
+            //hủy countdown cho cả phòng
+            if (needCancel)
+                await BroadcastRoom(host, client, $"COUNTDOWN_CANCEL|{roomId}\n");
+        }
+        private async Task RunCountdownAndStartGameAsync(string roomId, string host, string client, int seconds)
+        {
+            long startUnixMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            await BroadcastRoom(host, client, $"COUNTDOWN|{roomId}|{seconds}|{startUnixMs}\n");
+            CancellationToken token;
+            lock (RoomStateLock)
+            {
+                if (!RoomState.TryGetValue(roomId, out var st) || st.Cts == null) return;
+                token = st.Cts.Token;
+            }
+            try
+            {
+                await Task.Delay(seconds * 1000, token);
+                await SendGameStart(roomId, host, client);
+            }
+            catch (TaskCanceledException) { }
+            finally
+            {
+                lock (RoomStateLock)
+                {
+                    if (RoomState.TryGetValue(roomId, out var st))
+                    {
+                        st.CountdownRunning = false;
+                        st.Cts?.Dispose();
+                        st.Cts = null;
+                    }
+                }
+
+                //hủy coutdown để 2 bên UI đồng bộ (không countdown)
+                await BroadcastRoom(host, client, $"READY_STATE|{roomId}|0|0|0\n");
+            }
+        }
+        private async Task SendGameStart(string roomId, string host, string client)
+        {
+            TcpClient Host = null, Client = null;
+            lock (OnlineUsers)
+            {
+                OnlineUsers.TryGetValue(KeyUser(host), out Host);
+                OnlineUsers.TryGetValue(KeyUser(client), out Client);
+            }
+
+            await SendLineAsync(Host, $"GAME_START|white|{roomId}|{client}\n");
+            await SendLineAsync(Client, $"GAME_START|black|{roomId}|{host}\n");
+
+            AppendText($"[GAME_START] {roomId} {host} vs {client}");
+        }
         #endregion
         #region cập nhập UI waitngroom broacast
         private static string KeyUser(string u) => (u ?? "").Trim().ToLowerInvariant();
 
-        private async Task SendLineAsync(TcpClient cli, string line)
+        private async Task SendLineAsync(TcpClient client, string line)
         {
-            if (cli == null || !cli.Connected) return;
-            var data = Encoding.UTF8.GetBytes(line.EndsWith("\n") ? line : line + "\n");
-            await cli.GetStream().WriteAsync(data, 0, data.Length);
+            if (client == null || !client.Connected) return;
+            try
+            {
+                if (!line.EndsWith("\n")) line += "\n";
+                var data = Encoding.UTF8.GetBytes(line);
+                await client.GetStream().WriteAsync(data, 0, data.Length);
+            }
+            catch (Exception ex)
+            {
+                AppendText($"[SendLineAsync] Lỗi gửi: {ex.Message}");
+            }
         }
 
         private async Task BroadcastRoomUpdateAsync(string roomId)
         {
+            AppendText($"[ROOM_UPDATE] Enter roomId={roomId}");
+
             string host = null, client = null;
+
+            try
+            {
+                using (var conn = Connection.GetSqlConnection())
+                {
+                    conn.Open();
+                    var cmd = new SqlCommand(@"SELECT UsernameHost, UsernameClient FROM ROOM WHERE RoomID=@id", conn);
+                    cmd.Parameters.AddWithValue("@id", roomId);
+
+                    using var r = cmd.ExecuteReader();
+                    if (!r.Read())
+                    {
+                        AppendText($"[ROOM_UPDATE] DB không có RoomID={roomId}");
+                        return;
+                    }
+
+                    host = r["UsernameHost"]?.ToString();
+                    client = r["UsernameClient"]?.ToString();
+                }
+
+                var hostKey = KeyUser(host);
+                var clientKey = KeyUser(client);
+
+                TcpClient hostClient = null, clientClient = null;
+                lock (OnlineUsers)
+                {
+                    OnlineUsers.TryGetValue(KeyUser(hostKey), out hostClient);
+                    OnlineUsers.TryGetValue(KeyUser(clientKey), out clientClient);
+                }
+
+                AppendText($"[ROOM_UPDATE] host='{host}' client='{client}' hostFound={hostClient != null} clientFound={clientClient != null}");
+
+                string msg = $"ROOM_UPDATE|{roomId}|{host}|{client}\n";
+                await BroadcastRoom(host, client, msg);
+
+                AppendText($"[ROOM_UPDATE] Broadcast done: {msg.Trim()}");
+            }
+            catch (Exception ex)
+            {
+                AppendText($"[ROOM_UPDATE] EX: {ex}");
+            }
+        }
+        #endregion
+        private sealed class RoomCountdownState
+        {
+            public bool HostReady;
+            public bool ClientReady;
+            public bool CountdownRunning;
+            public CancellationTokenSource Cts;
+
+            public bool HostRematch;
+            public bool ClientRematch;
+        }
+
+        private readonly Dictionary<string, RoomCountdownState> RoomState = new();
+        private readonly object RoomStateLock = new();
+        private async Task HandleOutRoom(string roomid, string username)
+        {
+            bool pendingBroadcastRoomUpdate = false;
+            bool pendingCountdownCancel = false;
+            if (string.IsNullOrWhiteSpace(roomid) || string.IsNullOrWhiteSpace(username))
+                return;
+            roomid = roomid.Trim();
+            username = username.Trim();
+            bool deleted = false;
+            bool changed = false;
 
             using (var conn = Connection.GetSqlConnection())
             {
+                string host = null, client = null;
+                int numberplayer = 0;
                 conn.Open();
-                var cmd = new SqlCommand(@"SELECT UsernameHost, UsernameClient FROM ROOM WHERE RoomID=@id", conn);
-                cmd.Parameters.AddWithValue("@id", roomId);
-                using var r = cmd.ExecuteReader();
-                if (!r.Read()) return;
+                using var tx = conn.BeginTransaction(System.Data.IsolationLevel.Serializable);
 
-                host = r["UsernameHost"]?.ToString();
-                client = r["UsernameClient"]?.ToString();
+                using (var cmd = new SqlCommand(@"SELECT UsernameHost, UsernameClient, NumberPlayer FROM ROOM WITH (UPDLOCK, ROWLOCK) WHERE RoomID=@id", conn, tx))
+                {
+                    cmd.Parameters.AddWithValue("@id", roomid);
+                    using var read = await cmd.ExecuteReaderAsync();
+                    if (!await read.ReadAsync())
+                    {
+                        tx.Commit();
+                        return;
+                    }
+                    host = read["UsernameHost"]?.ToString();
+                    client = read["UsernameClient"]?.ToString();
+                    numberplayer = Convert.ToInt32(read["NumberPlayer"]);
+                }
+                string me = KeyUser(username);
+                string hostkey = KeyUser(host);
+                string clientkey = KeyUser(client);
+
+                if (me == hostkey)
+                {
+                    if (string.IsNullOrEmpty(client))
+                    {
+                        using var del = new SqlCommand("DELETE FROM ROOM WHERE RoomID=@id", conn, tx);
+                        del.Parameters.AddWithValue("@id", roomid);
+                        await del.ExecuteNonQueryAsync();
+                        deleted = true;
+                        changed = true;
+                    }
+                    //còn client thì chuyển client làm host
+                    using var update = new SqlCommand(@"UPDATE ROOM
+                                                SET UsernameHost   = @newHost,
+                                                    UsernameClient = NULL,
+                                                    NumberPlayer   = 1,
+                                                    RoomIsFull     = 0,
+                                                    IsClosed       = 0
+                                                WHERE RoomID = @id;", conn, tx);
+                    update.Parameters.AddWithValue("@newHost", client);
+                    update.Parameters.AddWithValue("@id", roomid);
+                    await update.ExecuteNonQueryAsync();
+                    changed = true;
+                    //reset state ready/countdown trong RAM
+                    bool needCancel = false;
+                    lock (RoomStateLock)
+                    {
+                        if (RoomState.TryGetValue(roomid, out var st))
+                        {
+                            st.HostReady = false;
+                            st.ClientReady = false;
+                            if (st.CountdownRunning)
+                            {
+                                needCancel = true;
+                                st.Cts?.Cancel();
+                            }
+                            st.CountdownRunning = false;
+                            st.Cts = null;
+                        }
+                        else
+                        {
+                            RoomState[roomid] = new RoomCountdownState(); //update state mới sạch
+                        }
+                    }
+                    //commit xong mới broadcast (để client nhận ROOM_UPDATE mới)
+                    pendingBroadcastRoomUpdate = true;
+                    pendingCountdownCancel = needCancel;
+                }
+                else if (me == clientkey)
+                {
+                    using var update = new SqlCommand(@"UPDATE ROOM
+                                                        SET UsernameClient=NULL,
+                                                            NumberPlayer = CASE WHEN NumberPlayer > 0 THEN NumberPlayer - 1 ELSE 0 END,
+                                                            RoomIsFull=0
+                                                        WHERE RoomID=@id", conn, tx);
+                    update.Parameters.AddWithValue("@id", roomid);
+                    await update.ExecuteNonQueryAsync();
+                    changed = true;
+                    //nếu sau update mà NumberPlayer = 0 thì delete
+                    using var check = new SqlCommand(@"SELECT NumberPlayer, UsernameHost, UsernameClient
+                                                     FROM ROOM
+                                                     WHERE RoomID=@id", conn, tx);
+                    check.Parameters.AddWithValue("@id", roomid);
+                    using var read = await check.ExecuteReaderAsync();
+                    if (await read.ReadAsync())
+                    {
+                        int n2 = Convert.ToInt32(read["NumberPlayer"]);
+                        string h2 = read["UsernameHost"]?.ToString();
+                        string c2 = read["UsernameClient"]?.ToString();
+
+                        if (n2 <= 0 || (string.IsNullOrEmpty(h2) && string.IsNullOrEmpty(c2)))
+                        {
+                            read.Close();
+                            using var del = new SqlCommand("DELETE FROM ROOM WHERE RoomID=@id", conn, tx);
+                            del.Parameters.AddWithValue("@id", roomid);
+                            await del.ExecuteNonQueryAsync();
+                            deleted = true;
+                        }
+                    }
+                }
+                else
+                {
+                    tx.Commit(); // user không thuộc room
+                    return;
+                }
+                tx.Commit();
+                //dọn state RAM để không dính READY/COUNTDOWN cũ
+                lock (RoomStateLock)
+                {
+                    if (RoomState.TryGetValue(roomid, out var st))
+                    {
+                        try { st.Cts?.Cancel(); } catch { }
+                        try { st.Cts?.Dispose(); } catch { }
+                        RoomState.Remove(roomid);
+                    }
+                }
+                if (deleted)
+                {
+                    AppendText($"[ROOM] Deleted room {roomid} (empty).");
+                    return;
+                }
+
+                if (changed)
+                {
+                    await BroadcastRoomUpdateAsync(roomid);
+                    AppendText($"[ROOM] OUTROOM handled: {username} left room {roomid}");
+                }
             }
 
-            var hostKey = KeyUser(host);
-            var clientKey = KeyUser(client);
+        }
+        #region rematch
+        private async Task HandleRoomInfoAsync(string roomId, TcpClient requester)
+        {
+            // 1) đẩy ROOM_UPDATE để UI biết host/client hiện tại
+            await BroadcastRoomUpdateAsync(roomId);
 
-            TcpClient hostCli = null, clientCli = null;
-            lock (OnlineUsers)
+            // 2) gửi READY_STATE hiện tại cho requester
+            bool hostReady = false, clientReady = false, running = false;
+            lock (RoomStateLock)
             {
-                OnlineUsers.TryGetValue(hostKey, out hostCli);
-                OnlineUsers.TryGetValue(clientKey, out clientCli);
+                if (RoomState.TryGetValue(roomId, out var st))
+                {
+                    hostReady = st.HostReady;
+                    clientReady = st.ClientReady;
+                    running = st.CountdownRunning;
+                }
             }
 
-            string msg = $"ROOM_UPDATE|{roomId}|{host}|{client}\n";
+            await SendLineAsync(requester,
+                $"READY_STATE|{roomId}|{(hostReady ? 1 : 0)}|{(clientReady ? 1 : 0)}|{(running ? 1 : 0)}\n");
+        }
+        private async Task HandleRematchAsync(string roomId, string fromUser)
+        {
+            var users = GetRoomUsers(roomId);
+            if (users == null) return;
+            var (host, client) = users.Value;
 
-            // gửi cho host nếu online
-            await SendLineAsync(hostCli, msg);
+            // chỉ cho người trong phòng rematch
+            string me = KeyUser(fromUser);
+            bool isHost = !string.IsNullOrEmpty(host) && me == KeyUser(host);
+            bool isClient = !string.IsNullOrEmpty(client) && me == KeyUser(client);
+            if (!isHost && !isClient) return;
 
-            // gửi cho client nếu online và khác host
-            if (!string.IsNullOrEmpty(clientKey) && clientKey != hostKey)
-                await SendLineAsync(clientCli, msg);
+            bool both = false;
 
-            AppendText($"[ROOM_UPDATE] {msg.Trim()}");
+            lock (RoomStateLock)
+            {
+                if (!RoomState.TryGetValue(roomId, out var st))
+                {
+                    st = new RoomCountdownState();
+                    RoomState[roomId] = st;
+                }
+
+                // set rematch flag
+                if (isHost) st.HostRematch = true;
+                else st.ClientRematch = true;
+
+                // reset ready + countdown
+                st.HostReady = false;
+                st.ClientReady = false;
+
+                if (st.CountdownRunning)
+                {
+                    try { st.Cts?.Cancel(); } catch { }
+                    st.CountdownRunning = false;
+                    st.Cts = null;
+                }
+
+                both = st.HostRematch && st.ClientRematch;
+
+                // nếu cả 2 đã rematch thì clear flag để lần sau rematch tiếp
+                if (both)
+                {
+                    st.HostRematch = false;
+                    st.ClientRematch = false;
+                }
+            }
+
+            // báo UI: reset ready (và hủy countdown nếu có)
+            await BroadcastRoom(host, client, $"COUNTDOWN_CANCEL|{roomId}\n");
+            await BroadcastRoom(host, client, $"READY_STATE|{roomId}|0|0|0\n");
+
+            // báo trạng thái rematch
+            await BroadcastRoom(host, client,
+                $"REMATCH_STATE|{roomId}|{fromUser}|{(both ? "BOTH" : "WAIT")}\n");
+
+            // nếu both thì có thể coi như “quay về waiting room và bấm READY lại”
+            // (không auto start game, vì bạn muốn lặp logic waiting room bình thường)
         }
         #endregion
     }
