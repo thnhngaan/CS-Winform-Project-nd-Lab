@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -7,11 +8,11 @@ using Assets.Scripts;
 public class GameChatUI : MonoBehaviour
 {
     [Header("UI")]
-    [SerializeField] private GameObject chatRoot;          // panel/container chat
-    [SerializeField] private ScrollRect chatScroll;        // Scroll View
-    [SerializeField] private Transform content;            // ScrollView/Viewport/Content
-    [SerializeField] private TMP_Text chatItemTemplate;    // TMP_Text template (inactive) trong Content
-    [SerializeField] private TMP_InputField inputField;    // ô nhập
+    [SerializeField] private GameObject chatRoot;
+    [SerializeField] private ScrollRect chatScroll;
+    [SerializeField] private Transform content;
+    [SerializeField] private TMP_Text chatItemTemplate;
+    [SerializeField] private TMP_InputField inputField;
 
     [Header("Config")]
     [SerializeField] private int maxItems = 60;
@@ -26,7 +27,6 @@ public class GameChatUI : MonoBehaviour
         if (inputField != null)
         {
             inputField.lineType = TMP_InputField.LineType.SingleLine;
-            // chỉ dùng code, không gán event trong Inspector
             inputField.onSubmit.RemoveAllListeners();
             inputField.onSubmit.AddListener(OnSubmitChat);
         }
