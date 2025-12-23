@@ -801,6 +801,78 @@ namespace HackA_Chess_Server_
                                 continue;
                             }
                         }
+                        if (parts[0] == "CHAT")
+                        {
+                            // CHAT|roomId|username|message
+                            if (parts.Length < 4) continue;
+
+                            string roomId = (parts[1] ?? "").Trim();
+                            string sender = (parts[2] ?? "").Trim();
+
+                            // lấy message phần sau dấu | thứ 3 (đúng như bạn làm)
+                            int p1 = msg.IndexOf('|');
+                            int p2 = msg.IndexOf('|', p1 + 1);
+                            int p3 = msg.IndexOf('|', p2 + 1);
+                            if (p3 < 0) continue;
+                            string chatMsg = msg.Substring(p3 + 1).Trim();
+
+                            AppendText($"[CHAT] recv sender='{sender}' room='{roomId}' msg='{chatMsg}'");
+
+                            // === 1) Echo lại cho sender (giữ như bạn) ===
+                            try
+                            {
+                                string selfMsg = $"CHAT|{roomId}|{sender}|{chatMsg}\n";
+                                byte[] selfData = Encoding.UTF8.GetBytes(selfMsg);
+                                await stream.WriteAsync(selfData, 0, selfData.Length);
+                            }
+                            catch (Exception ex)
+                            {
+                                AppendText($"[CHAT] Echo fail sender='{sender}': {ex.Message}");
+                            }
+
+                            // === 2) Tìm opponent (QUAN TRỌNG: Trim + case-insensitive) ===
+                            string opponent = GetOpponentOf(roomId, sender);
+                            opponent = (opponent ?? "").Trim();
+
+                            AppendText($"[CHAT] opponent='{opponent}'");
+
+                            // === 3) Gửi cho opponent ===
+                            if (!string.IsNullOrEmpty(opponent))
+                            {
+                                TcpClient oppClient = null;
+                                string oppKey = KeyUser(opponent);
+
+                                lock (OnlineUsers)
+                                {
+                                    AppendText("[CHAT] OnlineUsers keys: " + string.Join(",", OnlineUsers.Keys));
+                                    OnlineUsers.TryGetValue(oppKey, out oppClient);
+                                }
+
+                                AppendText($"[CHAT] opponent='{opponent}' oppKey='{oppKey}'");
+
+                                if (oppClient != null && oppClient.Connected)
+                                {
+                                    try
+                                    {
+                                        string forward = $"CHAT|{roomId}|{sender}|{chatMsg}\n";
+                                        byte[] data = Encoding.UTF8.GetBytes(forward);
+                                        await oppClient.GetStream().WriteAsync(data, 0, data.Length);
+
+                                        AppendText($"[CHAT] forwarded to '{opponent}' OK");
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        AppendText($"[CHAT] forward fail to '{opponent}': {ex.Message}");
+                                    }
+                                }
+                                else
+                                {
+                                    AppendText($"[CHAT] opponent '{opponent}' offline or not found in OnlineUsers");
+                                }
+                            }
+
+                            continue;
+                        }
                     }
                 }
             }
