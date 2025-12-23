@@ -16,6 +16,7 @@ public class GameOverScreen : MonoBehaviour
     public TMP_Text chat;
     public TMP_Text UserName;
     public TMP_Text EnemyName;
+    public GameObject chatbox;
 
     // Gọi hàm này khi hết game
     public void ShowGameOver(string winner)
@@ -28,6 +29,7 @@ public class GameOverScreen : MonoBehaviour
         chat.gameObject.SetActive(false);
         UserName.gameObject.SetActive(false);
         EnemyName.gameObject.SetActive(false);
+        chatbox.SetActive(false);
     }
 
     // Nút Rematch

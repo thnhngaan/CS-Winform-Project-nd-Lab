@@ -872,7 +872,22 @@ namespace HackA_Chess_Server_
                             }
 
                             continue;
+
                         }
+                        if (parts[0] == "ROOM_INFO")
+                        {
+                            if (parts.Length < 2) continue;
+                            await HandleRoomInfoAsync(parts[1].Trim(), client);
+                            continue;
+                        }
+
+                        if (parts[0] == "REMATCH")
+                        {
+                            if (parts.Length < 2) continue;
+                            await HandleRematchAsync(parts[1].Trim(), currentUsername);
+                            continue;
+                        }
+
                     }
                 }
             }
@@ -1448,6 +1463,9 @@ namespace HackA_Chess_Server_
             public bool ClientReady;
             public bool CountdownRunning;
             public CancellationTokenSource Cts;
+
+            public bool HostRematch;
+            public bool ClientRematch;
         }
 
         private readonly Dictionary<string, RoomCountdownState> RoomState = new();
@@ -1848,6 +1866,87 @@ namespace HackA_Chess_Server_
             cmd.Parameters.AddWithValue("@b", b);
 
             return (int)cmd.ExecuteScalar() > 0;
+        }
+        #endregion
+
+        #region rematch
+        private async Task HandleRoomInfoAsync(string roomId, TcpClient requester)
+        {
+            // 1) đẩy ROOM_UPDATE để UI biết host/client hiện tại
+            await BroadcastRoomUpdateAsync(roomId);
+
+            // 2) gửi READY_STATE hiện tại cho requester
+            bool hostReady = false, clientReady = false, running = false;
+            lock (RoomStateLock)
+            {
+                if (RoomState.TryGetValue(roomId, out var st))
+                {
+                    hostReady = st.HostReady;
+                    clientReady = st.ClientReady;
+                    running = st.CountdownRunning;
+                }
+            }
+
+            await SendLineAsync(requester,
+                $"READY_STATE|{roomId}|{(hostReady ? 1 : 0)}|{(clientReady ? 1 : 0)}|{(running ? 1 : 0)}\n");
+        }
+        private async Task HandleRematchAsync(string roomId, string fromUser)
+        {
+            var users = GetRoomUsers(roomId);
+            if (users == null) return;
+            var (host, client) = users.Value;
+
+            // chỉ cho người trong phòng rematch
+            string me = KeyUser(fromUser);
+            bool isHost = !string.IsNullOrEmpty(host) && me == KeyUser(host);
+            bool isClient = !string.IsNullOrEmpty(client) && me == KeyUser(client);
+            if (!isHost && !isClient) return;
+
+            bool both = false;
+
+            lock (RoomStateLock)
+            {
+                if (!RoomState.TryGetValue(roomId, out var st))
+                {
+                    st = new RoomCountdownState();
+                    RoomState[roomId] = st;
+                }
+
+                // set rematch flag
+                if (isHost) st.HostRematch = true;
+                else st.ClientRematch = true;
+
+                // reset ready + countdown
+                st.HostReady = false;
+                st.ClientReady = false;
+
+                if (st.CountdownRunning)
+                {
+                    try { st.Cts?.Cancel(); } catch { }
+                    st.CountdownRunning = false;
+                    st.Cts = null;
+                }
+
+                both = st.HostRematch && st.ClientRematch;
+
+                // nếu cả 2 đã rematch thì clear flag để lần sau rematch tiếp
+                if (both)
+                {
+                    st.HostRematch = false;
+                    st.ClientRematch = false;
+                }
+            }
+
+            // báo UI: reset ready (và hủy countdown nếu có)
+            await BroadcastRoom(host, client, $"COUNTDOWN_CANCEL|{roomId}\n");
+            await BroadcastRoom(host, client, $"READY_STATE|{roomId}|0|0|0\n");
+
+            // báo trạng thái rematch
+            await BroadcastRoom(host, client,
+                $"REMATCH_STATE|{roomId}|{fromUser}|{(both ? "BOTH" : "WAIT")}\n");
+
+            // nếu both thì có thể coi như “quay về waiting room và bấm READY lại”
+            // (không auto start game, vì bạn muốn lặp logic waiting room bình thường)
         }
         #endregion
     }
