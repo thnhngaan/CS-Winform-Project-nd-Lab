@@ -10,17 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 15003, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: Intro
+  m_Name: Windows
   m_EditorClassIdentifier: UnityEditor.dll::UnityEditor.Build.Profile.BuildProfile
   m_AssetVersion: 1
   m_BuildTarget: 19
   m_Subtarget: 2
   m_PlatformId: 4e3c793746204150860bf175a9a41a05
   m_PlatformBuildProfile:
-    rid: 8385914839300309058
+    rid: 2619967409737957377
   m_OverrideGlobalSceneList: 1
   m_Scenes:
-  - m_enabled: 0
+  - m_enabled: 1
     m_path: Assets/Scenes/Intro/IntroGame.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Login.unity
@@ -31,24 +31,22 @@ MonoBehaviour:
   - m_enabled: 1
     m_path: Assets/Scenes/JoinRoom.unity
   - m_enabled: 1
-    m_path: Assets/Scenes/WaitingRoom.unity
-  - m_enabled: 1
-    m_path: Assets/Scenes/Game/GameAI.unity
-  - m_enabled: 1
-<<<<<<< HEAD
     m_path: Assets/Scenes/Ranking.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Friend.unity
-=======
+  - m_enabled: 1
+    m_path: Assets/Scenes/WaitingRoom.unity
+  - m_enabled: 1
     m_path: Assets/Scenes/Game/Game.unity
->>>>>>> 2ab495247656be9d783315179c2051ef66bb74f0
+  - m_enabled: 1
+    m_path: Assets/Scenes/Game/GameAI.unity
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:
     m_Settings: []
   references:
     version: 2
     RefIds:
-    - rid: 8385914839300309058
+    - rid: 2619967409737957377
       type: {class: WindowsPlatformSettings, ns: UnityEditor.WindowsStandalone, asm: UnityEditor.WindowsStandalone.Extensions}
       data:
         m_Development: 0

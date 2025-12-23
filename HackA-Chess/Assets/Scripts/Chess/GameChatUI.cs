@@ -19,12 +19,10 @@ public class GameChatUI : MonoBehaviour
 
     private readonly List<TMP_Text> _items = new List<TMP_Text>();
 
-    // ✅ nhận line ở thread nào cũng được, UI update ở Update() (main thread)
-    private readonly ConcurrentQueue<string> _pendingLines = new ConcurrentQueue<string>();
-
     private void Awake()
     {
-        if (chatRoot != null) chatRoot.SetActive(false);
+        if (chatRoot != null)
+            chatRoot.SetActive(false);
 
         if (inputField != null)
         {
@@ -36,7 +34,6 @@ public class GameChatUI : MonoBehaviour
 
     private void OnEnable()
     {
-        if (NetworkClient.Instance == null) return;
         NetworkClient.Instance.OnLine -= OnServerLine;
         NetworkClient.Instance.OnLine += OnServerLine;
     }
@@ -45,14 +42,6 @@ public class GameChatUI : MonoBehaviour
     {
         if (NetworkClient.Instance != null)
             NetworkClient.Instance.OnLine -= OnServerLine;
-    }
-
-    private void Update()
-    {
-        while (_pendingLines.TryDequeue(out var line))
-        {
-            HandleChatLineOnMainThread(line);
-        }
     }
 
     public void ToggleChat()
@@ -64,9 +53,17 @@ public class GameChatUI : MonoBehaviour
             inputField.ActivateInputField();
     }
 
+    // TMP_InputField callback: void(string) - FIXED
     private async void OnSubmitChat(string _)
     {
-        await SendChatAsync();
+        try
+        {
+            await SendChatAsync();
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"Chat error: {ex.Message}");
+        }
     }
 
     private async System.Threading.Tasks.Task SendChatAsync()
@@ -74,45 +71,35 @@ public class GameChatUI : MonoBehaviour
         if (inputField == null) return;
 
         string msg = inputField.text.Trim();
+
+        // clear input ngay
         inputField.text = "";
         inputField.ActivateInputField();
 
         if (string.IsNullOrEmpty(msg)) return;
 
-        msg = msg.Replace("\n", " ").Replace("\r", " ").Replace("|", "/");
+        msg = msg.Replace("\n", " ")
+                 .Replace("\r", " ")
+                 .Replace("|", "/");
 
         string roomId = GameSession.RoomId;
         string user = UserSession.CurrentUsername;
 
         await NetworkClient.Instance.SendAsync($"CHAT|{roomId}|{user}|{msg}");
+
+        // nếu server CHƯA broadcast, bạn có thể tạm show local:
+        // AddItem($"{user}: {msg}");
     }
 
-    // ⚠️ Có thể được gọi từ thread nền
-    private void OnServerLine(string raw)
-    {
-        if (string.IsNullOrEmpty(raw)) return;
-
-        // đề phòng raw có \n chứa nhiều line
-        var lines = raw.Split('\n');
-        foreach (var l in lines)
-        {
-            var line = l.Trim();
-            if (line.Length > 0)
-                _pendingLines.Enqueue(line);
-        }
-    }
-
-    // ✅ chạy ở main thread (Update)
-    private void HandleChatLineOnMainThread(string line)
+    private void OnServerLine(string line)
     {
         if (!line.StartsWith("CHAT|")) return;
 
         var parts = line.Split('|');
         if (parts.Length < 4) return;
 
-        string roomId = parts[1]?.Trim();
-        if (!string.Equals(roomId, GameSession.RoomId, System.StringComparison.OrdinalIgnoreCase))
-            return;
+        string roomId = parts[1];
+        if (roomId != GameSession.RoomId) return;
 
         string user = parts[2];
         string msg = parts[3];
@@ -124,11 +111,13 @@ public class GameChatUI : MonoBehaviour
     {
         if (content == null || chatItemTemplate == null) return;
 
+        // clone 1 dòng chat
         var item = Instantiate(chatItemTemplate, content);
         item.gameObject.SetActive(true);
         item.text = text;
         _items.Add(item);
 
+        // giới hạn số dòng
         if (_items.Count > maxItems)
         {
             var first = _items[0];
@@ -136,6 +125,7 @@ public class GameChatUI : MonoBehaviour
             if (first != null) Destroy(first.gameObject);
         }
 
+        // auto scroll xuống cuối
         if (chatScroll != null)
         {
             Canvas.ForceUpdateCanvases();
@@ -143,4 +133,3 @@ public class GameChatUI : MonoBehaviour
         }
     }
 }
-

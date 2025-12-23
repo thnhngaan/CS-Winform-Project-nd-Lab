@@ -1,6 +1,8 @@
 ﻿
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -18,7 +20,7 @@ namespace Assets.Scripts
 {
     public class JoinRoom : MonoBehaviour
     {
-
+       
         [SerializeField] private TMP_FontAsset roomItemFont;
 
 
@@ -51,6 +53,11 @@ namespace Assets.Scripts
         [Header("Create ID")]
         [SerializeField] private GameObject CreateID_Panel;
 
+        [Header("Password (Private)")]
+        [SerializeField] private GameObject Password_CreateID_Panel;
+        [SerializeField] private TMP_InputField Password_CreateID_input;
+
+
         //Status (ToggleGroup - Toggles)
         [SerializeField] private ToggleGroup Status_CreateID_togglegroup;
         [SerializeField] private Toggle StatusPublic_CreateID_toggle;
@@ -62,7 +69,16 @@ namespace Assets.Scripts
         [SerializeField] private Button Back_CreateID_button;
         [SerializeField] private Button Join_CreateID_button;
 
+        private readonly Dictionary<string, bool> RoomIsPublic = new();
 
+        [Header("Join Private Room")]
+        [SerializeField] private GameObject JoinPass_Panel;      
+        [SerializeField] private TMP_InputField JoinPass_Input;  
+        [SerializeField] private Button JoinPass_OK;
+        [SerializeField] private Button JoinPass_Cancel;
+        [SerializeField] private TMP_Text IdPrivate;
+
+        private string PendingJoinRoomId = null;
 
         // MESSAGES
         [Header("Messages")]
@@ -80,7 +96,11 @@ namespace Assets.Scripts
 
         private readonly List<GameObject> _spawnedListItems = new();
         private string _selectedRoomId = null;
+        private float DoubleClickTime = 0.3f;
+        private float LastClickTime = -999f;
+        private string LastClickedRoomId = null;
         [SerializeField] private bool autoListOnStart = true;
+
 
         private void Awake()
         {
@@ -125,13 +145,28 @@ namespace Assets.Scripts
                 Create_CreateID_button.onClick.AddListener(OnCreate_CreatID_buttonClicked);
             }
 
-            if (Join_CreateID_button != null) Join_CreateID_button.onClick.AddListener(OnJoin_CreateID_buttonClicked); 
+            if (Join_CreateID_button != null) Join_CreateID_button.onClick.AddListener(OnJoin_CreateID_buttonClicked);
 
             // Status toggles (Create_ID)
             if (StatusPublic_CreateID_toggle != null)
-                StatusPublic_CreateID_toggle.onValueChanged.AddListener(isOn => { if (isOn) status = "public"; });
+                StatusPublic_CreateID_toggle.onValueChanged.AddListener(isOn =>
+                {
+                    if (isOn)
+                    {
+                        status = "public";
+                        RefreshPasswordUI();
+                    }
+                });
+
             if (StatusPrivate_CreateID_toggle != null)
-                StatusPrivate_CreateID_toggle.onValueChanged.AddListener(isOn => { if (isOn) status = "private"; });
+                StatusPrivate_CreateID_toggle.onValueChanged.AddListener(isOn =>
+                {
+                    if (isOn)
+                    {
+                        status = "private";
+                        RefreshPasswordUI();
+                    }
+                });
 
             // Đóng cả 3 panel
             CloseAllPanels();
@@ -153,6 +188,26 @@ namespace Assets.Scripts
             {
                 ID_ListRoom_inputfield.characterLimit = 6;
                 ID_ListRoom_inputfield.contentType = TMP_InputField.ContentType.IntegerNumber;
+            }
+            //join private room = password
+            if (JoinPass_Panel != null) JoinPass_Panel.SetActive(false);
+
+            if (JoinPass_OK != null)
+            {
+                JoinPass_OK.onClick.RemoveAllListeners();
+                JoinPass_OK.onClick.AddListener(() => _ = OnJoinPassOk());
+            }
+
+            if (JoinPass_Cancel != null)
+            {
+                JoinPass_Cancel.onClick.RemoveAllListeners();
+                JoinPass_Cancel.onClick.AddListener(CloseJoinPassPopup);
+            }
+
+            if (JoinPass_Input != null)
+            {
+                JoinPass_Input.characterLimit = 4;
+                JoinPass_Input.contentType = TMP_InputField.ContentType.IntegerNumber;
             }
         }
 
@@ -211,16 +266,7 @@ namespace Assets.Scripts
         //  Nhận "Join success"/"Join fail"
         private async void OnJoin_buttonClicked() 
         {
-            if (!string.IsNullOrEmpty(_selectedRoomId) && SixDigits.IsMatch(_selectedRoomId))
-            {
-                ShowMessage($"Đang gửi JOIN|{_selectedRoomId} ...");
-                string result = await SendMessageAsync($"JOIN|{_selectedRoomId}", "JOIN|");
-                HandleResponse_Join(result); 
-            }
-            else
-            {
-                ShowMessage("Chưa chọn phòng trong danh sách.");
-            }
+            await JoinSelectedRoomAsync();
         }
 
         // EnterID_Panel (MỞ - JoinID_button)
@@ -273,17 +319,9 @@ namespace Assets.Scripts
             // Đóng 3 panel
             CreateID_Panel.transform.SetAsLastSibling();           
             CreateID_Panel.SetActive(true);
-
-            if (ID_CreateID_inputfield != null)
-            {
-                ID_CreateID_inputfield.text = string.Empty;
-                ID_CreateID_inputfield.textComponent.color = Color.black;
-                ID_CreateID_inputfield.ActivateInputField();
-            }
-
             if (StatusPublic_CreateID_toggle != null) StatusPublic_CreateID_toggle.isOn = true;
             status = GetStatusFromGroup();
-
+            RefreshPasswordUI();
 
         }
 
@@ -302,10 +340,28 @@ namespace Assets.Scripts
         private async void OnCreate_CreatID_buttonClicked()
         {
             status = GetStatusFromGroup();
-            ShowMessage($"Đang gửi yêu cầu CREATE ({status})...");
+            string result;
+            if (status.Equals("private", StringComparison.OrdinalIgnoreCase))
+            {
+                string pass = (Password_CreateID_input.text ?? "").Trim();
 
-            string result = await SendMessageAsync($"CREATE|{status}","CREATE|");
-            HandleResponse_Create(result); 
+                // đúng yêu cầu: 4 chữ số
+                if (pass.Length != 4 || !pass.All(char.IsDigit))
+                {
+                    MessageBoxManager.Instance.ShowMessageBox("BÁO LỖI", "Password phải đúng 4 chữ số.");
+                    Password_CreateID_input.ActivateInputField();
+                    return;
+                }
+
+                ShowMessage("Đang gửi yêu cầu CREATE (private)...");
+                result = await SendMessageAsync($"CREATE|private|{pass}", "CREATE|");
+                HandleResponse_Create(result);
+                return;
+            }
+
+            ShowMessage($"Đang gửi yêu cầu CREATE ({status})...");
+            result = await SendMessageAsync($"CREATE|{status}", "CREATE|");
+            HandleResponse_Create(result);
         }
 
         //  CreateID_Panel (Join_CreateID_button)
@@ -484,6 +540,7 @@ namespace Assets.Scripts
         private async Task LoadListRoomAsync() 
         {
             ClearListRoomUI();
+            RoomIsPublic.Clear();
             _selectedRoomId = null;
 
             if (ListRoom_Panel != null) ListRoom_Panel.SetActive(true);
@@ -496,7 +553,9 @@ namespace Assets.Scripts
             for (int i = 1; i < rooms.Length; i++)
             {
                 string[] room = rooms[i].Split(",");
-                AddListRoomItem(room[0], int.Parse(room[1]), room[2], int.Parse(room[3]));
+                bool isPublic = bool.TryParse(room[3], out bool b) && b;
+                RoomIsPublic[room[0]] = isPublic;
+                AddListRoomItem(room[0], int.Parse(room[1]), room[2], isPublic, int.Parse(room[4]));
             }
         }
         private List<string> SplitLines(string block)
@@ -571,7 +630,7 @@ namespace Assets.Scripts
         }
 
         // Thêm 1 item phòng lên ListRoom_Panel HOÀN TOÀN BẰNG CODE
-        private void AddListRoomItem(string id, int count, string hostName, int hostElo)
+        private void AddListRoomItem(string id, int count, string hostName, bool isPublic, int hostElo)
         {
             if (ListRoom_Content == null)
             {
@@ -579,8 +638,10 @@ namespace Assets.Scripts
                 return;
             }
 
-            Debug.Log($"[JoinRoom] AddListRoomItem: id={id}, count={count}, host={hostName}, elo={hostElo}");
-
+            Debug.Log($"[JoinRoom] AddListRoomItem: id={id}, count={count}, host={hostName}, status={isPublic}, elo={hostElo}");
+            string status;
+            if (isPublic) status = "☺PUBLIC";
+            else status = "🔒PRIVATE";
             //Tạo GameObject gốc cho 1 dòng phòng
             var go = new GameObject($"Room_{id}", typeof(RectTransform));
             go.transform.SetParent(ListRoom_Content, false);
@@ -595,7 +656,7 @@ namespace Assets.Scripts
 
             var btn = go.AddComponent<Button>();
             btn.onClick.RemoveAllListeners();
-            btn.onClick.AddListener(() => OnListRoomSelected(id));
+            btn.onClick.AddListener(() => OnRoomItemClick(id));
 
             //layout ngang cho các cột: ID | Host | EloHost | Status | Count
             var hLayout = go.AddComponent<HorizontalLayoutGroup>();
@@ -617,7 +678,7 @@ namespace Assets.Scripts
             var tElo = CreateTmpText(go.transform, "Text_Elo", hostElo.ToString(), TextAlignmentOptions.Left);
 
             //trạng thái
-            var sStatus = CreateTmpText(go.transform, "Text_Status", "PUBLIC", TextAlignmentOptions.Center);
+            var sStatus = CreateTmpText(go.transform, "Text_Status", status, TextAlignmentOptions.Center);
 
             //số player (ví dụ: "1/2")
             var tCount = CreateTmpText(go.transform, "Text_Count", $"{count}/2", TextAlignmentOptions.Center);
@@ -649,9 +710,111 @@ namespace Assets.Scripts
                 leCount.preferredWidth= 400f;
             }
         }
+        #region Chọn phòng và vào phòng
+        private void OnRoomItemClick(string roomId)
+        {
+            //click 1: chỉ chọn phòng như cũ
+            OnListRoomSelected(roomId);
 
+            //click 2 trong thời gian ngắn và cùng room -> join luôn
+            float now = Time.unscaledTime;
+            if (LastClickedRoomId == roomId && (now - LastClickTime) <= DoubleClickTime)
+            {
+                LastClickTime = -999f;
+                LastClickedRoomId = null;
 
-        //  Xử lý khi chọn một phòng từ danh sách
+                _ = JoinSelectedRoomAsync(); // fire & forget
+                return;
+            }
+            LastClickTime = now;
+            LastClickedRoomId = roomId;
+        }
+        private async Task JoinSelectedRoomAsync()
+        {
+            if (string.IsNullOrEmpty(_selectedRoomId) || !SixDigits.IsMatch(_selectedRoomId))
+            {
+                ShowMessage("Chưa chọn phòng trong danh sách.");
+                return;
+            }
+            //kiểm tra room public/private từ list
+            if (RoomIsPublic.TryGetValue(_selectedRoomId, out bool isPublic) && !isPublic)
+            {
+                //neus phong PRIVATE -> yêu cầu nhập pass trước
+                OpenJoinPassPopup(_selectedRoomId);
+                return;
+            }
+            //nếu phòng PUBLIC thì join thẳng
+            ShowMessage($"Đang gửi JOIN|{_selectedRoomId} ...");
+            string result = await SendMessageAsync($"JOIN|{_selectedRoomId}", "JOIN|");
+            HandleResponse_Join(result);
+        }
+
+        private void OpenJoinPassPopup(string roomId)
+        {
+            PendingJoinRoomId = roomId;
+
+            if (JoinPass_Panel != null)
+            {
+                JoinPass_Panel.SetActive(true);
+                JoinPass_Panel.transform.SetAsLastSibling(); //luôn đè lên UI khác
+                IdPrivate.text = $"PRIVATE | {roomId}";
+            }
+            if (JoinPass_Input != null)
+            {
+                JoinPass_Input.text = "";
+                JoinPass_Input.ActivateInputField();
+            }
+            ShowMessage($"Phòng {roomId} là PRIVATE. Nhập mật khẩu 4 số để join.");
+        }
+
+        private void CloseJoinPassPopup()
+        {
+            PendingJoinRoomId = null;
+
+            if (JoinPass_Panel != null)
+                JoinPass_Panel.SetActive(false);
+
+            if (JoinPass_Input != null)
+                JoinPass_Input.text = "";
+        }
+
+        private async Task OnJoinPassOk()
+        {
+            if (string.IsNullOrEmpty(PendingJoinRoomId))
+            {
+                CloseJoinPassPopup();
+                return;
+            }
+            string pass = (JoinPass_Input != null ? (JoinPass_Input.text ?? "") : "").Trim();
+            if (pass.Length != 4 || !pass.All(char.IsDigit))
+            {
+                MessageBoxManager.Instance?.ShowMessageBox("BÁO LỖI", "Password phải đúng 4 chữ số.");
+                JoinPass_Input?.ActivateInputField();
+                return;
+            }
+            //checkpass
+            ShowMessage("Đang kiểm tra mật khẩu phòng...");
+            string chk = await SendMessageAsync($"CHECKPASS|{PendingJoinRoomId}|{pass}", "CHECKPASS|");
+            chk = (chk ?? "").Trim();
+
+            if (chk.Equals("CHECKPASS|OK", StringComparison.OrdinalIgnoreCase))
+            {
+                //nếu sv ktra OK => JOIN
+                string roomId = PendingJoinRoomId;
+                CloseJoinPassPopup();
+
+                ShowMessage($"Mật khẩu đúng. Đang gửi JOIN|{roomId} ...");
+                string result = await SendMessageAsync($"JOIN|{roomId}", "JOIN|");
+                HandleResponse_Join(result);
+            }
+            else
+            {
+                //NOTOK
+                MessageBoxManager.Instance?.ShowMessageBox("BÁO LỖI", "Sai mật khẩu phòng.");
+                JoinPass_Input?.ActivateInputField();
+            }
+        }
+        //Xử lý khi chọn một phòng từ danh sách
         private void OnListRoomSelected(string roomId)
         {
             _selectedRoomId = roomId;
@@ -683,9 +846,30 @@ namespace Assets.Scripts
                 }
             }
             _spawnedListItems.Clear();
+
         }
 
-        //  
+        private void RefreshPasswordUI()
+        {
+            string s = GetStatusFromGroup();
+            bool isPrivate = s.Equals("private", StringComparison.OrdinalIgnoreCase);
+
+            if (Password_CreateID_Panel != null)
+                Password_CreateID_Panel.SetActive(isPrivate);
+
+            if (isPrivate && Password_CreateID_input != null)
+            {
+                // setup cho pass 4 số
+                Password_CreateID_input.characterLimit = 4;
+                Password_CreateID_input.contentType = TMP_InputField.ContentType.IntegerNumber;
+
+                Password_CreateID_input.text = "";
+                Password_CreateID_input.ActivateInputField(); 
+            }
+            if (!isPrivate && Password_CreateID_input != null)
+                Password_CreateID_input.text = ""; //public thì xoá
+        }
+
         private string GetStatusFromGroup()
         {
             if (Status_CreateID_togglegroup != null)
@@ -699,7 +883,7 @@ namespace Assets.Scripts
             if (StatusPrivate_CreateID_toggle != null && StatusPrivate_CreateID_toggle.isOn) return "private";
             return "public";
         }
-
+        #endregion
         private void ShowMessage(string msg)
         {
             if (messageText != null)
