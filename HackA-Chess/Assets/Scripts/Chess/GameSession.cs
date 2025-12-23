@@ -13,5 +13,7 @@ namespace Assets.Scripts
 
         // tên đối thủ
         public static string OpponentName { get; set; } = "";
+        public static string MyFullName { get; set; } = "";
+        public static string OpponentFullName { get; set; } = "";
     }
 }

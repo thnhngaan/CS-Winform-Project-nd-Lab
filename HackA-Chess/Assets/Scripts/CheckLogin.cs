@@ -95,7 +95,6 @@ namespace Assets.Scripts
             }
             else if (result.Equals("LOGIN|SUCCESS", System.StringComparison.OrdinalIgnoreCase))
             {
-                UserSession1.Username = username;
                 Assets.Scripts.UserSession.CurrentUsername = username;
                 ShowMessage("Đăng nhập thành công!");
                 await Task.Delay(1000);
@@ -116,10 +115,6 @@ namespace Assets.Scripts
                 messageText.text = msg;
             else
                 Debug.Log(msg);
-        }
-        public static class UserSession1
-        {
-            public static string Username;
         }
     }
 }

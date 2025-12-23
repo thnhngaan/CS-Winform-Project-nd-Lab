@@ -23,16 +23,6 @@ CREATE TABLE UserDB
 
 GO
 
--- SESSION (DB các phiên đăng nhập - đăng xuất)
-CREATE TABLE SessionDB 
-(
-    SessionID INT IDENTITY PRIMARY KEY,
-    Username VARCHAR(50) NOT NULL,
-    LoginTime DATETIME NOT NULL DEFAULT GETDATE(),
-    LogoutTime DATETIME NULL,
-    FOREIGN KEY (Username) REFERENCES UserDB(Username)
-);
-
 -- ROOM (DB các phòng chơi)
 USE HackAChessDB
 CREATE TABLE ROOM (
@@ -47,28 +37,29 @@ CREATE TABLE ROOM (
     FOREIGN KEY (UsernameHost) REFERENCES UserDB(Username),
     FOREIGN KEY (UsernameClient) REFERENCES UserDB(Username)
 );
+USE HackAChessDB
+CREATE TABLE Friendship (
+    UserA       VARCHAR(50) NOT NULL,  --luôn là username đã lower + sort
+    UserB       VARCHAR(50) NOT NULL,  --luôn là username đã lower + sort
+    Status      TINYINT NOT NULL DEFAULT 0,
+    RequestedBy VARCHAR(50) NOT NULL,  --ai là người gửi lời mời (lower) A or B
+    CreatedAt   DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    UpdatedAt   DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
 
--- MATCH (DB trận đấu)
-CREATE TABLE MatchDB 
-(
-    MatchID INT IDENTITY PRIMARY KEY,
-    RoomID INT NOT NULL,
-    Player1 VARCHAR(50),
-    Player2 VARCHAR(50),
-    Winner VARCHAR(50),
-    StartTime DATETIME DEFAULT GETDATE(),
-    EndTime DATETIME NULL,
-    FOREIGN KEY (RoomID) REFERENCES RoomDB(RoomID)
+    CONSTRAINT PK_Friendship PRIMARY KEY (UserA, UserB),
+    CONSTRAINT CK_Friendship_Pair CHECK (UserA < UserB),
+    CONSTRAINT CK_Friendship_Status CHECK (Status IN (0,1))
 );
-GO
 
--- MATCHMOVE (tuỳ chọn - DB lưu nước đi)
-CREATE TABLE MatchMoveDB (
-    MoveID INT IDENTITY PRIMARY KEY,
-    MatchID INT NOT NULL,
-    MoveNumber INT NOT NULL,
-    Player VARCHAR(50),
-    MoveData VARCHAR(255),
-    TimeStamp DATETIME DEFAULT GETDATE(),
-    FOREIGN KEY (MatchID) REFERENCES MatchDB(MatchID)
+CREATE INDEX IX_Friendship_UserA ON Friendship(UserA);
+CREATE INDEX IX_Friendship_UserB ON Friendship(UserB);
+
+USE HackAChessDB
+GO
+ALTER TABLE ROOM ADD Password CHAR(4)
+ALTER TABLE ROOM
+ADD CONSTRAINT CK_ROOM_Pass
+CHECK (
+    (IsPublic = 1 AND Password IS NULL)
+ OR (IsPublic = 0 AND Password IS NOT NULL)
 );

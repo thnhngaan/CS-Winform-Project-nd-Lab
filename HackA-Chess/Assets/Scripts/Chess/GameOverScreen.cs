@@ -1,5 +1,9 @@
-﻿using TMPro;
+﻿using System.Collections.Concurrent;
+using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
+using Assets.Scripts;
 using UnityEngine.SceneManagement;
 
 public class GameOverScreen : MonoBehaviour
@@ -27,16 +31,53 @@ public class GameOverScreen : MonoBehaviour
     }
 
     // Nút Rematch
-    public void OnRematchButton()
+    public async void OnRematchClick()
     {
-        Debug.Log("Rematch clicked");
-        // Load lại scene hiện tại
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-    }
+        string roomId = GameSession.RoomId;
+        if (string.IsNullOrEmpty(roomId))
+        {
+            Debug.LogWarning("[REMATCH] RoomId empty");
+            return;
+        }
 
+        try
+        {
+            if (NetworkClient.Instance != null && NetworkClient.Instance.IsConnected)
+            {
+                await NetworkClient.Instance.SendAsync($"REMATCH|{roomId}\n"); // nhớ \n nếu protocol line-based
+            }
+            else
+            {
+                Debug.LogWarning("[REMATCH] Not connected");
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning("[REMATCH] Send failed: " + ex.Message);
+        }
+
+        // ✅ LoadScene đúng cách
+        SceneManager.LoadScene("WaitingRoom");
+    }
     // Nút Quit
-    public void OnQuitButton()
+    public async void OnQuitButton()
     {
+        string roomId = GameSession.RoomId;
+
+        try
+        {
+            if (NetworkClient.Instance != null && NetworkClient.Instance.IsConnected && !string.IsNullOrEmpty(roomId))
+                await NetworkClient.Instance.SendAsync($"OUTROOM|{roomId}\n");
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning("[QUIT] OUTROOM send failed: " + ex.Message);
+        }
+
+        // reset local session để khỏi dính room cũ
+        GameSession.RoomId = "";
+        GameSession.OpponentName = "";
+
         SceneManager.LoadScene("MainMenu");
     }
 }

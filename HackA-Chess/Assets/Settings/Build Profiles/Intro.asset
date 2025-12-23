@@ -20,7 +20,7 @@ MonoBehaviour:
     rid: 8385914839300309058
   m_OverrideGlobalSceneList: 1
   m_Scenes:
-  - m_enabled: 1
+  - m_enabled: 0
     m_path: Assets/Scenes/Intro/IntroGame.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Login.unity
@@ -35,7 +35,13 @@ MonoBehaviour:
   - m_enabled: 1
     m_path: Assets/Scenes/Game/GameAI.unity
   - m_enabled: 1
+<<<<<<< HEAD
+    m_path: Assets/Scenes/Ranking.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Friend.unity
+=======
     m_path: Assets/Scenes/Game/Game.unity
+>>>>>>> 2ab495247656be9d783315179c2051ef66bb74f0
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:
     m_Settings: []

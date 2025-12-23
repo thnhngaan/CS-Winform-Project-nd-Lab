@@ -1,6 +1,11 @@
 fileFormatVersion: 2
+<<<<<<<< HEAD:HackA-Chess/Assets/Prefabs/Chesspiece_AI.prefab.meta
 guid: 48d4983e6cce25344a32e53b1399fa67
 PrefabImporter:
+========
+guid: a4c6e3c81040f8f4c92c43d9057ee3ce
+DefaultImporter:
+>>>>>>>> origin/DucLong:HackA-Chess/Assets/_Recovery/0 (13).unity.meta
   externalObjects: {}
   userData: 
   assetBundleName: 
