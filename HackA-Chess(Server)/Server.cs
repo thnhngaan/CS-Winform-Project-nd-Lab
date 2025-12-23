@@ -194,10 +194,13 @@ namespace HackA_Chess_Server_
                                 isLogin = true;
                                 currentUsername = username;
                                 AppendText($"Client {clientEP} đăng nhập thành công.");
+                   
                                 lock (OnlineUsers)
                                 {
                                     OnlineUsers[KeyUser(currentUsername)] = client;
+
                                 }
+                                await NotifyFriendsOnlineState(currentUsername, true);
                                 break;
                             }
                             else
@@ -252,7 +255,15 @@ namespace HackA_Chess_Server_
                     }
                     while (client.Connected) //còn vòng while này dành cho các tác vụ khác khi đã login vào server và nó sẽ giữ connected cho đến khi logout
                     {
+                      
+
                         string msg = await ReceiveMessage(stream);
+                        if (msg == null)
+                        {
+                            AppendText($"[DISCONNECT] user={currentUsername} ep={client.Client.RemoteEndPoint}");
+                            break; //thoát loop để cleanup
+                        }
+                        var lines = msg.Split('\n', StringSplitOptions.RemoveEmptyEntries);
                         if (msg == null)
                         {
                             break;
@@ -267,6 +278,7 @@ namespace HackA_Chess_Server_
                                 {
                                     OnlineUsers.Remove(KeyUser(currentUsername));
                                 }
+                                await NotifyFriendsOnlineState(currentUsername, false);
                             }
                             string response = "LOGOUT|SUCCESS";
                             byte[] responsebytes = Encoding.UTF8.GetBytes(response);
@@ -293,7 +305,7 @@ namespace HackA_Chess_Server_
                                 await stream.WriteAsync(respBytes, 0, respBytes.Length);
                                 continue;
                             }
-                            string status="", password ="";
+                            string status = "", password = "";
                             if (parts.Length == 2)
                             {
                                 status = parts[1].Trim();
@@ -304,7 +316,7 @@ namespace HackA_Chess_Server_
                                 password = parts[2].Trim();
                             }
 
-                            string roomId = CreateRoom(currentUsername, status, password); 
+                            string roomId = CreateRoom(currentUsername, status, password);
                             string response;
                             if (roomId != null)
                             {
@@ -546,8 +558,9 @@ namespace HackA_Chess_Server_
                         }
                         if (parts[0] == "OUTROOM")
                         {
-                            if (parts.Length < 2) { 
-                                AppendText("[OUTROOM] invalid"); 
+                            if (parts.Length < 2)
+                            {
+                                AppendText("[OUTROOM] invalid");
                                 continue;
                             }
                             string roomId = parts[1].Trim();
@@ -557,6 +570,236 @@ namespace HackA_Chess_Server_
 
                             await SendLineAsync(client, $"OUTROOM|OK|{roomId}\n");
                             continue;
+                        }
+                        if (parts[0] == "CHECKPASS")
+                        {
+                            string roomId = parts.Length >= 2 ? parts[1].Trim() : "";
+                            string pass = parts.Length >= 3 ? parts[2].Trim() : "";
+
+                            bool ok = await CheckRoomPassword(roomId, pass);
+
+                            string resp = ok ? "CHECKPASS|OK\n" : "CHECKPASS|NOTOK\n";
+                            byte[] data = Encoding.UTF8.GetBytes(resp);
+                            await stream.WriteAsync(data, 0, data.Length);
+                            await stream.FlushAsync();
+                            continue;
+                        }
+                        foreach (var raw in lines)
+                        {
+                            string msg1 = raw.Trim();        // bỏ \r, space
+                            if (msg1.Length == 0) continue;
+
+                            string[] parts1 = msg1.Split('|'); // giờ parts[0] sạch
+                            string cmd = parts1[0].Trim();
+
+                            if (cmd=="FRIEND_INVITE")
+                            {
+                                if (parts.Length < 2)
+                                {
+                                    await SendLineAsync(client, "FRIEND_INVITE|INVALID\n");
+                                    continue;
+                                }
+
+                                string target = parts[1].Trim();
+                                string me = currentUsername;
+
+                                if (string.IsNullOrWhiteSpace(me))
+                                {
+                                    await SendLineAsync(client, "FRIEND_INVITE|NOLOGIN\n");
+                                    continue;
+                                }
+
+                                if (KeyUser(me) == KeyUser(target))
+                                {
+                                    await SendLineAsync(client, "FRIEND_INVITE|SELF\n");
+                                    continue;
+                                }
+
+                                if (!UserExists(target))
+                                {
+                                    await SendLineAsync(client, $"FRIEND_INVITE|NOT_FOUND|{target}\n");
+                                    continue;
+                                }
+
+                                var row = GetFriendRow(me, target);
+                                if (row != null)
+                                {
+                                    var (st, reqBy) = row.Value;
+
+                                    if (st == 1)
+                                    {
+                                        await SendLineAsync(client, $"FRIEND_INVITE|ALREADY|{target}\n");
+                                        continue;
+                                    }
+
+                                    // nếu đang pending:
+                                    if (st == 0)
+                                    {
+                                        // nếu target đã gửi cho mình trước đó -> auto accept
+                                        if (KeyUser(reqBy) == KeyUser(target))
+                                        {
+                                            AcceptInvite(target, me);
+                                            await SendLineAsync(client, $"FRIEND_INVITE|AUTO_ACCEPT|{target}\n");
+
+                                            // báo cho target nếu đang online
+                                            await PushToUserIfOnline(target, $"FRIEND_RESP_PUSH|{KeyUser(me)}|ACCEPT\n");
+
+                                            // sync online status 2 chiều
+                                            await PushToUserIfOnline(target, $"FRIEND_STATUS|{KeyUser(me)}|1\n");
+                                            await SendLineAsync(client, $"FRIEND_STATUS|{KeyUser(target)}|{(IsOnline(target) ? 1 : 0)}\n");
+                                        }
+                                        else
+                                        {
+                                            await SendLineAsync(client, $"FRIEND_INVITE|PENDING|{target}\n");
+                                        }
+                                        continue;
+                                    }
+                                }
+
+                                // CHƯA CÓ ROW => TẠO LỜI MỜI
+                                InsertPendingInvite(me, target);
+
+                                await SendLineAsync(client, $"FRIEND_INVITE|OK|{target}\n");
+
+                                // push cho người nhận nếu họ đang online (để hiện “incoming request” ngay)
+                                await PushToUserIfOnline(target, $"FRIEND_INVITE_PUSH|{KeyUser(me)}\n");
+
+                                continue;
+                            }
+                            if (cmd == "FRIEND_RESP")
+                            {
+                                if (parts.Length < 3) { await SendLineAsync(client, "FRIEND_RESP|INVALID\n"); continue; }
+
+                                string fromUser = parts[1].Trim();//người đã gửi lời mời
+                                string decision = parts[2].Trim().ToUpperInvariant(); //ACCEPT/DECLINE
+                                string me = currentUsername;
+                                var row = GetFriendRow(me, fromUser);
+                                if (row == null || row.Value.status != 0)
+                                {
+                                    await SendLineAsync(client, $"FRIEND_RESP_ACK|NOT_FOUND|{fromUser}\n");
+                                    continue;
+                                }
+                                //check đúng chiều: incoming request nghĩa là RequestedBy phải là fromUser
+                                if (row.Value.RequestedBy != KeyUser(fromUser))
+                                {
+                                    await SendLineAsync(client, $"FRIEND_RESP_ACK|INVALID|{fromUser}\n");
+                                    continue;
+                                }
+                                if (decision == "ACCEPT")
+                                {
+                                    AcceptInvite(fromUser, me);
+                                    await SendLineAsync(client, $"FRIEND_RESP_ACK|OK|{fromUser}|ACCEPT\n");
+                                    await PushToUserIfOnline(fromUser, $"FRIEND_RESP_PUSH|{KeyUser(me)}|ACCEPT\n");
+
+                                    //sau khi accept, 2 bên có thể update online ngay
+                                    await PushToUserIfOnline(fromUser, $"FRIEND_STATUS|{KeyUser(me)}|1\n");
+                                    await SendLineAsync(client, $"FRIEND_STATUS|{KeyUser(fromUser)}|{(IsOnline(fromUser) ? 1 : 0)}\n");
+                                }
+                                else //DECLINE (từ chối)
+                                {
+                                    DeclineInvite(fromUser, me);
+                                    await SendLineAsync(client, $"FRIEND_RESP_ACK|OK|{fromUser}|DECLINE\n");
+                                    await PushToUserIfOnline(fromUser, $"FRIEND_RESP_PUSH|{KeyUser(me)}|DECLINE\n");
+                                }
+                                continue;
+                            }
+                            if (cmd == "FRIEND_LIST")
+                            {
+                                string me = currentUsername;
+                                var friends = GetAcceptedFriends(me);
+
+                                //format: FRIEND_LIST|count|user,online;user,online
+                                var sb = new StringBuilder();
+                                foreach (var f in friends)
+                                {
+                                    int on = IsOnline(f) ? 1 : 0;
+                                    sb.Append(f).Append(',').Append(on).Append(';');
+                                }
+                                string payload = sb.Length > 0 ? sb.ToString(0, sb.Length - 1) : "";
+                                await SendLineAsync(client, $"FRIEND_LIST|{friends.Count}|{payload}\n");
+                                continue;
+                            }
+                            if (cmd == "FRIEND_LIST_DETAIL")
+                            {
+                                string me = currentUsername;
+                                var cards = GetFriendCards(me); // hàm mới bên dưới
+
+                                // format: FRIEND_LIST_DETAIL|count|u,fullname,elo,win,draw,loss,avatar,online;...
+                                var sb = new StringBuilder();
+                                foreach (var c in cards)
+                                {
+                                    // nhớ làm sạch ký tự phân cách
+                                    string safeName = SafeField(c.Fullname);
+                                    string safeAvatar = SafeField(c.Avatar);
+
+                                    sb.Append(c.FriendKey).Append(',')
+                                      .Append(safeName).Append(',')
+                                      .Append(c.Elo).Append(',')
+                                      .Append(c.Win).Append(',')
+                                      .Append(c.Draw).Append(',')
+                                      .Append(c.Loss).Append(',')
+                                      .Append(safeAvatar).Append(',')
+                                      .Append(c.Online ? 1 : 0)
+                                      .Append(';');
+                                }
+
+                                string payload = sb.Length > 0 ? sb.ToString(0, sb.Length - 1) : "";
+                                await SendLineAsync(client, $"FRIEND_LIST_DETAIL|{cards.Count}|{payload}\n");
+                                continue;
+                            }
+                            if (cmd == "FRIEND_INBOX")
+                            {
+                                string me = currentUsername;
+                                var incoming = GetIncomingPending(me);
+
+                                string payload = incoming.Count == 0 ? "" : string.Join(";", incoming);
+                                await SendLineAsync(client, $"FRIEND_INBOX|{incoming.Count}|{payload}\n");
+                                continue;
+                            }
+                            if (cmd == "FRIEND_REMOVE")
+                            {
+                                // FRIEND_REMOVE|target
+                                if (parts.Length < 2)
+                                {
+                                    await SendLineAsync(client, "FRIEND_REMOVE|INVALID\n");
+                                    continue;
+                                }
+
+                                string me = currentUsername; // username sau login
+                                if (string.IsNullOrEmpty(me))
+                                {
+                                    await SendLineAsync(client, "FRIEND_REMOVE|NOLOGIN\n");
+                                    continue;
+                                }
+
+                                string target = KeyUser(parts[1]);
+                                if (string.IsNullOrEmpty(target))
+                                {
+                                    await SendLineAsync(client, "FRIEND_REMOVE|INVALID\n");
+                                    continue;
+                                }
+
+                                if (!UserExists(target))
+                                {
+                                    await SendLineAsync(client, "FRIEND_REMOVE|NOT_FOUND\n");
+                                    continue;
+                                }
+
+                                if (!AreFriends(me, target))
+                                {
+                                    await SendLineAsync(client, "FRIEND_REMOVE|NOT_FRIEND\n");
+                                    continue;
+                                }
+
+                                RemoveFriendship(me, target);
+
+                                //ACK cho người xóa
+                                await SendLineAsync(client, $"FRIEND_REMOVE|OK|{target}\n");
+
+                                // Push cho đối phương nếu online
+                                await PushToUserIfOnline(target, $"FRIEND_REMOVED_PUSH|{KeyUser(me)}\n");
+                                continue;
+                            }
                         }
                     }
                 }
@@ -580,6 +823,10 @@ namespace HackA_Chess_Server_
                     }
                 }
                 UpdateClientList();
+                if (!string.IsNullOrEmpty(currentUsername))
+                {
+                    await NotifyFriendsOnlineState(currentUsername, false);
+                }
                 client.Close();
             }
         }
@@ -1045,6 +1292,20 @@ namespace HackA_Chess_Server_
         #endregion
         #region cập nhập UI waitngroom broacast
         private static string KeyUser(string u) => (u ?? "").Trim().ToLowerInvariant();
+        //đảm bảo (a, b) luôn đúng thứ tự
+        private static (string a, string b) NormalizePair(string u1, string u2)
+        {
+            string x = KeyUser(u1);
+            string y = KeyUser(u2);
+            if (string.CompareOrdinal(x, y) < 0) return (x, y);
+            return (y, x);
+        }
+
+        private bool IsOnline(string username)
+        {
+            lock (OnlineUsers)
+                return OnlineUsers.ContainsKey(KeyUser(username));
+        }
 
         private async Task SendLineAsync(TcpClient client, string line)
         {
@@ -1262,5 +1523,260 @@ namespace HackA_Chess_Server_
                 }
             }
         }
+        private async Task<bool> CheckRoomPassword(string roomid, string password)
+        {
+            if (string.IsNullOrEmpty(roomid) || string.IsNullOrEmpty(password))
+            {
+                return false;
+            }
+            roomid = roomid.Trim();
+            password = password.Trim();
+            using (var conn = Connection.GetSqlConnection())
+            {
+                await conn.OpenAsync();
+                using (var cmd = new SqlCommand(
+                    "SELECT Password FROM ROOM WHERE RoomID = @id AND IsClosed = 0", conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", roomid);
+                    object obj = await cmd.ExecuteScalarAsync(); //lấy 1 giá trị
+                    string PassInDb = null;
+                    if (obj == null)
+                    {
+                        PassInDb = null;
+                    }
+                    else if (obj == DBNull.Value)
+                    {
+                        PassInDb = null;
+                    }
+                    else
+                    {
+                        PassInDb = obj.ToString().Trim();
+                    }
+
+                    if (string.IsNullOrEmpty(PassInDb))
+                        return false;
+
+                    return string.Equals(password, PassInDb, StringComparison.Ordinal);
+                }
+            }
+        }
+        #region Friend
+        private bool UserExists(string username)
+        {//đã có hàm UsernameExist nhưng trong nó chỉ trả về true hoặc false theo kiểu "tồn tại" nên sẽ có thêm hàm này ở đây để kiểm tra theo cách khác
+            username = username.Trim();
+            using (var conn = Connection.GetSqlConnection())
+            {
+                conn.Open();
+                using var cmd = new SqlCommand("SELECT COUNT(*) FROM UserDB WHERE Username=@u", conn);
+                cmd.Parameters.AddWithValue("@u", username);
+                return (int)cmd.ExecuteScalar() > 0;
+            }
+        }
+        //lấy trạng thái quan hệ của 2 user trong bảng nếu có quan hệ bạn bè hoặc đang chờ đồng ý(pending) 
+        private (byte status, string RequestedBy)? GetFriendRow(string u1, string u2) //có thể null hoặc ko
+        {
+            var (a, b) = NormalizePair(u1, u2);
+            using (var conn = Connection.GetSqlConnection())
+            {
+                conn.Open();
+                using var cmd = new SqlCommand("SELECT Status, RequestedBy FROM Friendship WHERE UserA=@a AND UserB=@b", conn);
+                cmd.Parameters.AddWithValue("@a", a);
+                cmd.Parameters.AddWithValue("@b", b);
+                using var r = cmd.ExecuteReader();
+                if (!r.Read()) return null;
+
+                byte st = Convert.ToByte(r["Status"]);
+                string reqby = r["RequestedBy"].ToString();
+                return (st, reqby);
+            }
+        }
+        //tạo 1 lời mới kết bạn từ User này đến User kia
+        private void InsertPendingInvite(string fromUser, string toUser)
+        {
+            var (a, b) = NormalizePair(fromUser, toUser);
+            string fromKey = KeyUser(fromUser);
+            using var conn = Connection.GetSqlConnection();
+            conn.Open();
+            using var cmd = new SqlCommand(@"INSERT INTO Friendship(UserA, UserB, Status, RequestedBy, CreatedAt, UpdatedAt) VALUES(@a, @b, 0, @request, SYSUTCDATETIME(), SYSUTCDATETIME())", conn);
+            cmd.Parameters.AddWithValue("@a", a);
+            cmd.Parameters.AddWithValue("@b", b);
+            cmd.Parameters.AddWithValue("@request", fromKey);
+            cmd.ExecuteNonQuery();
+        }
+        //đồng ý lời mời kết bạn và chuyển status thành accepted (1)
+        private void AcceptInvite(string fromUser, string toUser)
+        {
+            var (a, b) = NormalizePair(fromUser, toUser);
+            using var conn = Connection.GetSqlConnection();
+            conn.Open();
+            using var cmd = new SqlCommand(@"UPDATE Friendship
+                                             SET Status=1, UpdatedAt=SYSUTCDATETIME()
+                                             WHERE UserA=@a AND UserB=@b AND Status=0", conn);
+            cmd.Parameters.AddWithValue("@a", a);
+            cmd.Parameters.AddWithValue("@b", b);
+            cmd.ExecuteNonQuery();
+        }
+        private sealed class FriendCard
+        {
+            public string FriendKey;
+            public string Fullname;
+            public int Elo, Win, Draw, Loss;
+            public string Avatar;
+            public bool Online;
+        }
+
+        private static string SafeField(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            return s.Replace("|", "/").Replace(",", "/").Replace(";", "/").Replace("\n", " ").Replace("\r", " ");
+        }
+
+        private List<FriendCard> GetFriendCards(string username)
+        {
+            string me = KeyUser(username);
+            var list = new List<FriendCard>();
+
+            using var conn = Connection.GetSqlConnection();
+            conn.Open();
+
+            // Friendship lưu lower-case key, nên join với LOWER(UserDB.Username)
+            using var cmd = new SqlCommand(@"
+        SELECT
+            FriendKey = CASE WHEN F.UserA=@me THEN F.UserB ELSE F.UserA END,
+            U.Fullname,
+            U.Elo,
+            U.TotalWin,
+            U.TotalDraw,
+            U.TotalLoss,
+            U.Avatar
+        FROM Friendship F
+        JOIN UserDB U
+          ON LOWER(U.Username) = CASE WHEN F.UserA=@me THEN F.UserB ELSE F.UserA END
+        WHERE F.Status=1 AND (F.UserA=@me OR F.UserB=@me)
+        ORDER BY U.Elo DESC, U.Username ASC;
+    ", conn);
+
+            cmd.Parameters.AddWithValue("@me", me);
+
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                string friendKey = r["FriendKey"].ToString();
+
+                var card = new FriendCard
+                {
+                    FriendKey = friendKey,
+                    Fullname = r["Fullname"]?.ToString() ?? "",
+                    Elo = r["Elo"] != DBNull.Value ? Convert.ToInt32(r["Elo"]) : 1200,
+                    Win = r["TotalWin"] != DBNull.Value ? Convert.ToInt32(r["TotalWin"]) : 0,
+                    Draw = r["TotalDraw"] != DBNull.Value ? Convert.ToInt32(r["TotalDraw"]) : 0,
+                    Loss = r["TotalLoss"] != DBNull.Value ? Convert.ToInt32(r["TotalLoss"]) : 0,
+                    Avatar = r["Avatar"]?.ToString() ?? "",
+                    Online = IsOnline(friendKey)
+                };
+
+                list.Add(card);
+            }
+
+            return list;
+        }
+        //xử lí từ chối lời mời kết bạn thì sẽ xóa cột đó trong bảng
+        private void DeclineInvite(string fromUser, string toUser)
+        {
+            var (a, b) = NormalizePair(fromUser, toUser);
+            using var conn = Connection.GetSqlConnection();
+            conn.Open();
+            using var cmd = new SqlCommand("DELETE FROM Friendship WHERE UserA=@a AND UserB=@b AND Status=0", conn);
+            cmd.Parameters.AddWithValue("@a", a);
+            cmd.Parameters.AddWithValue("@b", b);
+            cmd.ExecuteNonQuery();
+        }
+        //lấy danh sách bạn bè của username
+        private List<string> GetAcceptedFriends(string username)
+        {
+            string me = KeyUser(username);
+            var list = new List<string>();
+
+            using var conn = Connection.GetSqlConnection();
+            conn.Open();
+            using var cmd = new SqlCommand(@"SELECT CASE WHEN UserA=@me THEN UserB ELSE UserA END AS Friend
+                                             FROM Friendship
+                                             WHERE Status=1 AND (UserA=@me OR UserB=@me)", conn);
+            cmd.Parameters.AddWithValue("@me", me);
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+                list.Add(r["Friend"].ToString());
+
+            return list;
+        }
+        //lấy danh sách lời mời kết bạn của username
+        private List<string> GetIncomingPending(string username)
+        {
+            string me = KeyUser(username);
+            var list = new List<string>();
+
+            using var conn = Connection.GetSqlConnection();
+            conn.Open();
+            using var cmd = new SqlCommand(@"SELECT CASE WHEN UserA=@me THEN UserB ELSE UserA END AS FromUser
+                                             FROM Friendship
+                                             WHERE Status=0 AND RequestedBy <> @me AND (UserA=@me OR UserB=@me)", conn);
+            cmd.Parameters.AddWithValue("@me", me);
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+                list.Add(r["FromUser"].ToString());
+            return list;
+        }
+        //gửi cho tất cả các player đang online về trạng thái của mình
+        private async Task NotifyFriendsOnlineState(string username, bool online)
+        {
+            var friends = GetAcceptedFriends(username);
+            if (friends.Count == 0) return;
+
+            string msg = $"FRIEND_STATUS|{KeyUser(username)}|{(online ? 1 : 0)}\n";
+            foreach (var f in friends)
+            {
+                TcpClient c = null;
+                lock (OnlineUsers)
+                    OnlineUsers.TryGetValue(KeyUser(f), out c);
+                await SendLineAsync(c, msg); 
+            }
+        }
+        //gửi trạng thái đến cho người đó nếu người đó đang online
+        private async Task PushToUserIfOnline(string username, string line)
+        {
+            TcpClient c = null;
+            lock (OnlineUsers)
+                OnlineUsers.TryGetValue(KeyUser(username), out c);
+
+            await SendLineAsync(c, line);
+        }
+        private void RemoveFriendship(string u1, string u2)
+        {
+            var (a, b) = NormalizePair(u1, u2);
+            using var conn = Connection.GetSqlConnection();
+            conn.Open();
+            using var cmd = new SqlCommand(@"DELETE FROM Friendship WHERE UserA=@a AND UserB=@b AND Status=1", conn);
+            cmd.Parameters.AddWithValue("@a", a);
+            cmd.Parameters.AddWithValue("@b", b);
+            cmd.ExecuteNonQuery();
+        }
+        private bool AreFriends(string u1, string u2)
+        {
+            var (a, b) = NormalizePair(u1, u2); //sort + lowercase để ra đúng PK (UserA<UserB)
+
+            using var conn = Connection.GetSqlConnection();
+            conn.Open();
+
+            using var cmd = new SqlCommand(@"
+        SELECT COUNT(*)
+        FROM Friendship
+        WHERE UserA=@a AND UserB=@b AND Status=1", conn);
+
+            cmd.Parameters.AddWithValue("@a", a);
+            cmd.Parameters.AddWithValue("@b", b);
+
+            return (int)cmd.ExecuteScalar() > 0;
+        }
+        #endregion
     }
 }
