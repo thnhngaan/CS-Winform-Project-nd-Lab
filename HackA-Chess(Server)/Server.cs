@@ -255,7 +255,7 @@ namespace HackA_Chess_Server_
                     }
                     while (client.Connected) //còn vòng while này dành cho các tác vụ khác khi đã login vào server và nó sẽ giữ connected cho đến khi logout
                     {
-                      
+
 
                         string msg = await ReceiveMessage(stream);
                         if (msg == null)
@@ -592,7 +592,7 @@ namespace HackA_Chess_Server_
                             string[] parts1 = msg1.Split('|'); // giờ parts[0] sạch
                             string cmd = parts1[0].Trim();
 
-                            if (cmd=="FRIEND_INVITE")
+                            if (cmd == "FRIEND_INVITE")
                             {
                                 if (parts.Length < 2)
                                 {
@@ -872,6 +872,59 @@ namespace HackA_Chess_Server_
                             }
 
                             continue;
+                        }
+
+                        if (parts[0].Trim() == "RANDOM")
+                        {
+                            string chosenRoomId = null;
+                            string response;
+
+                            // Lấy trực tiếp 1 RoomID hợp lệ từ DB bằng random ở phía SQL
+                            try
+                            {
+                                using (var conn = Connection.GetSqlConnection())
+                                {
+                                    conn.Open();
+                                    string sql = @"
+                                        SELECT TOP 1 RoomID
+                                        FROM ROOM
+                                        WHERE IsPublic = 1
+                                          AND IsClosed = 0
+                                          AND RoomIsFull = 0
+                                        ORDER BY NEWID();";
+
+                                    using (var cmd = new SqlCommand(sql, conn))
+                                    {
+                                        object result = cmd.ExecuteScalar();
+                                        chosenRoomId = result?.ToString();
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                AppendText("[RANDOM] Lỗi truy vấn DB: " + ex.Message);
+                                chosenRoomId = null;
+                            }
+
+                            // RANDOM|ID hoặc fail nếu không có phòng nào hợp lệ
+                            if (string.IsNullOrEmpty(chosenRoomId))
+                            {
+                                response = "RANDOM|fail\n";
+                                AppendText("Danh sách phòng trống");
+                                AppendText("RANDOM|fail");
+                            }
+                            else
+                            {
+                                response = $"RANDOM|{chosenRoomId}\n";
+                            }
+
+                            // Gửi phản hồi về Client
+                            byte[] respBytes = Encoding.UTF8.GetBytes(response);
+                            await stream.WriteAsync(respBytes, 0, respBytes.Length);
+
+                            AppendText($"{response}");
+                            continue;
+
                         }
                     }
                 }

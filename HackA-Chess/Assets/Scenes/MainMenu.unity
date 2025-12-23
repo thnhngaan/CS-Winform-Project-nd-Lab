@@ -17956,6 +17956,7 @@ GameObject:
   - component: {fileID: 1845172481}
   - component: {fileID: 1845172480}
   - component: {fileID: 1845172479}
+  - component: {fileID: 1845172482}
   m_Layer: 5
   m_Name: ButtonPlay
   m_TagString: Untagged
@@ -18063,10 +18064,10 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 1
         m_CallState: 2
-      - m_Target: {fileID: 1845172479}
-        m_TargetAssemblyTypeName: UnityEngine.UI.Button, UnityEngine.UI
-        m_MethodName: 
-        m_Mode: 1
+      - m_Target: {fileID: 1845172477}
+        m_TargetAssemblyTypeName: UnityEngine.GameObject, UnityEngine
+        m_MethodName: SetActive
+        m_Mode: 6
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
@@ -18113,6 +18114,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1845172477}
   m_CullTransparentMesh: 1
+--- !u!114 &1845172482
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1845172477}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76d6d6975bd28044aa2a250a21b42d37, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.RandomRoom
+  autoJoinButton: {fileID: 0}
+  waitingroomScene: WaitingRoom
+  requestTimeoutMs: 5000
 --- !u!1 &1858385285
 GameObject:
   m_ObjectHideFlags: 0
@@ -18833,6 +18849,7 @@ GameObject:
   - component: {fileID: 1929772289}
   - component: {fileID: 1929772288}
   - component: {fileID: 1929772287}
+  - component: {fileID: 1929772290}
   m_Layer: 5
   m_Name: AutoJoin
   m_TagString: Untagged
@@ -18903,7 +18920,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1929772288}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1929772290}
+        m_TargetAssemblyTypeName: Assets.Scripts.RandomRoom, Assembly-CSharp
+        m_MethodName: OnAutoJoinClick
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1929772288
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18942,6 +18971,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1929772285}
   m_CullTransparentMesh: 1
+--- !u!114 &1929772290
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1929772285}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76d6d6975bd28044aa2a250a21b42d37, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.RandomRoom
+  autoJoinButton: {fileID: 0}
+  waitingroomScene: WaitingRoom
+  requestTimeoutMs: 5000
 --- !u!1 &1930846519
 GameObject:
   m_ObjectHideFlags: 0
