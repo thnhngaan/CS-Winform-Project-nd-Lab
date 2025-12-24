@@ -61,6 +61,9 @@ namespace Assets.Scripts
                 PlayerPrefs.SetString("MatchId", matchId);
                 PlayerPrefs.Save();
                 SetStatus($"Gia nhập thành công! ID: {matchId}. Chuyển scene…");
+
+                GameSession.RoomId = matchId;
+
                 SceneManager.LoadScene(waitingroomScene, LoadSceneMode.Single);
             }
             catch (TimeoutException tex)
