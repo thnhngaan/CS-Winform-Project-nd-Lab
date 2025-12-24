@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Assets.Scripts;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -124,7 +125,7 @@ public class LoadRank : MonoBehaviour
         string msg = $"GET_RANK|{page}|{pageSize}";
         Debug.Log("Send: " + msg);
         await NetworkClient.Instance.SendAsync(msg);
-        string result = await NetworkClient.Instance.ReceiveOnceAsync();
+        string result = await NetworkClient.Instance.WaitForPrefixAsync("RANK_PAGE|", 5000);
         HandleServerMessage(result);
     }
 

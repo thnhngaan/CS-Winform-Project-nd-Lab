@@ -9,7 +9,6 @@ public class GameNetworkListener : MonoBehaviour // Hàm lắng nghe msg từ c�
     [SerializeField] private Game game;
     [SerializeField] private TMP_Text statusText;
 
-    private bool _listening;
 
     private void Awake() // bắt đầu lắng nghe khi bật scene Game
     {
@@ -19,28 +18,15 @@ public class GameNetworkListener : MonoBehaviour // Hàm lắng nghe msg từ c�
 
     private async void OnEnable() // Lắng nghe
     {
-        _listening = true;
-        await ListenLoop(); // vòng lặp lắng nghe msg
+        NetworkClient.Instance.OnLine -= HandleServerMessage;
+        NetworkClient.Instance.OnLine += HandleServerMessage;
     }
 
     private void OnDisable() // Tắt lắng nghe
     {
-        _listening = false;
+        NetworkClient.Instance.OnLine -= HandleServerMessage;
     }
 
-    private async Task ListenLoop()
-    {
-        while (_listening && NetworkClient.Instance.IsConnected)
-        {
-            string msg = await NetworkClient.Instance.ReceiveOnceAsync();
-            if (string.IsNullOrEmpty(msg))
-            {
-                Debug.LogWarning("[GameNet] mất kết nối hoặc không có dữ liệu");
-                break;
-            }
-            HandleServerMessage(msg); // msg sẽ được HadleServerMessage xử lí
-        }
-    }
 
     private void HandleServerMessage(string msg)
     {

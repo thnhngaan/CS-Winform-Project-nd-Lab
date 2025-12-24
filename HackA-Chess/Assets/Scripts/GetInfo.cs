@@ -11,6 +11,13 @@ namespace Assets.Scripts
     public static class UserSession
     {
         public static string CurrentUsername;
+        public static string avatar;
+        public static int elopoint;
+        public static string fullname;
+        public static int totalwin;
+        public static int totaldraw;
+        public static int totalloss;
+
     }
 }
 public class GetInfo : MonoBehaviour
@@ -28,6 +35,7 @@ public class GetInfo : MonoBehaviour
     private async void Start()
     {
         string currentUsername = UserSession.CurrentUsername;
+        
 
         if (string.IsNullOrEmpty(currentUsername))
         {
@@ -39,7 +47,7 @@ public class GetInfo : MonoBehaviour
         await NetworkClient.Instance.SendAsync(msg);
         Debug.Log("Đã gửi: " + msg);
 
-        string resp = await NetworkClient.Instance.ReceiveOnceAsync();
+        string resp = await NetworkClient.Instance.WaitForPrefixAsync("GETINFO|",5000);
 
         if (string.IsNullOrEmpty(resp))
         {
@@ -51,19 +59,25 @@ public class GetInfo : MonoBehaviour
 
         //format: GETINFO|fullName|elo|totalWin|totalDraw|totalLoss|avatarPath
         string[] parts = resp.Split('|');
-        if (parts.Length < 7 || parts[0] != "GETINFO")
+        if (parts.Length < 8 || parts[0] != "GETINFO")
         {
             Debug.LogError($"GetInfo: Gói tin sai format. parts.Length = {parts.Length}, parts[0] = {parts[0]}");
             return;
         }
+        string usernamestr = parts[1];
+        string fullNameStr = parts[2];
+        int elo = int.Parse(parts[3]);
+        int totalWin = int.Parse(parts[4]);
+        int totalDraw = int.Parse(parts[5]);
+        int totalLoss = int.Parse(parts[6]);
+        string avatarPath = parts[7]; 
 
-        string fullNameStr = parts[1];
-        int elo = int.Parse(parts[2]);
-        int totalWin = int.Parse(parts[3]);
-        int totalDraw = int.Parse(parts[4]);
-        int totalLoss = int.Parse(parts[5]);
-        string avatarPath = parts[6]; 
-
+        UserSession.avatar= avatarPath;
+        UserSession.elopoint = elo;
+        UserSession.totalwin = totalWin;
+        UserSession.totaldraw = totalDraw;
+        UserSession.totalloss = totalLoss;
+        UserSession.fullname = fullNameStr;
         //set avt cho button, nếu có thì sẽ dùng avatarPath, nếu không có thì sẽ dùng default avatar
         Sprite finalAvatar = defaultAvatar;
 

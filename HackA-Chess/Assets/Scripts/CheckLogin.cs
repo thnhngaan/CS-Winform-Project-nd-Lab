@@ -64,7 +64,7 @@ namespace Assets.Scripts
                     return "Lỗi: Không kết nối được tới server.";
                 }
                 await NetworkClient.Instance.SendAsync(message);
-                string response = await NetworkClient.Instance.ReceiveOnceAsync();
+                string response = await NetworkClient.Instance.WaitForPrefixAsync("LOGIN|", 5000);
                 if (response == null)
                 {
                     return "Lỗi: Không nhận được dữ liệu từ server.";
@@ -77,7 +77,6 @@ namespace Assets.Scripts
                 return $"Lỗi: {ex.Message}";
             }
         }
-
         //nhận msg từ server
         private async Task LoginAsync(string username, string hashedPassword)
         {
@@ -90,18 +89,18 @@ namespace Assets.Scripts
             }
             //xử lý phản hồi từ server
             result = result.Trim();
-            if (result.Equals("Login failed|Tài khoản của bạn đã được đăng nhập ở nơi khác"))
+            if(result.Equals("LOGIN|FAILED_Tài khoản của bạn đã được đăng nhập ở nơi khác"))
             {
                 MessageBoxManager.Instance.ShowMessageBox("BÁO LỖI", "TÀI KHOẢN CỦA BẠN ĐÃ ĐƯỢC ĐĂNG NHẬP Ở NƠI KHÁC");
             }
-            else if (result.Equals("Login success", System.StringComparison.OrdinalIgnoreCase))
+            else if (result.Equals("LOGIN|SUCCESS", System.StringComparison.OrdinalIgnoreCase))
             {
                 Assets.Scripts.UserSession.CurrentUsername = username;
                 ShowMessage("Đăng nhập thành công!");
                 await Task.Delay(1000);
                 SceneManager.LoadScene(NextScene);
             }
-            else if (result.Equals("Login failed", System.StringComparison.OrdinalIgnoreCase))
+            else if (result.Equals("LOGIN|FAILED", System.StringComparison.OrdinalIgnoreCase))
             {
                 MessageBoxManager.Instance.ShowMessageBox("BÁO LỖI", "SAI TÀI KHOẢN HOẶC MẬT KHẨU!");
             }

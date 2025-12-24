@@ -220,10 +220,24 @@ public class AIPlayer : MonoBehaviour
     void SimulateMove(MoveOption move)
     {
         move.captured = game.GetPosition(move.target.x, move.target.y);
+
+        // nếu có quân bị ăn -> tắt nó trong lúc simulate để khỏi bị FindGameObjectsWithTag quét trúng
+        if (move.captured != null)
+        {
+            var cap = move.captured.GetComponent<ChessmanAI>();
+            move.capturedWasActive = move.captured.activeSelf;
+            if (cap != null)
+            {
+                move.capturedX = cap.GetXBoard();
+                move.capturedY = cap.GetYBoard();
+            }
+            move.captured.SetActive(false);
+        }
+
         game.SetPosition(move.target.x, move.target.y, move.piece);
         game.SetPosition(move.pieceX, move.pieceY, null);
 
-        ChessmanAI cm = move.piece.GetComponent<ChessmanAI>();
+        var cm = move.piece.GetComponent<ChessmanAI>();
         cm.SetXBoard(move.target.x);
         cm.SetYBoard(move.target.y);
     }
@@ -233,9 +247,19 @@ public class AIPlayer : MonoBehaviour
         game.SetPosition(move.pieceX, move.pieceY, move.piece);
         game.SetPosition(move.target.x, move.target.y, move.captured);
 
-        ChessmanAI cm = move.piece.GetComponent<ChessmanAI>();
+        var cm = move.piece.GetComponent<ChessmanAI>();
         cm.SetXBoard(move.pieceX);
         cm.SetYBoard(move.pieceY);
+        if (move.captured != null)
+        {
+            var cap = move.captured.GetComponent<ChessmanAI>();
+            if (cap != null)
+            {
+                cap.SetXBoard(move.target.x); 
+                cap.SetYBoard(move.target.y);
+            }
+            move.captured.SetActive(move.capturedWasActive);
+        }
     }
 
     List<MoveOption> GetAllLegalMoves(string player)
@@ -258,22 +282,23 @@ public class AIPlayer : MonoBehaviour
 }
 
 public class MoveOption
+{
+    public GameObject piece;
+    public Vector2Int target;
+
+    public GameObject captured;
+    public bool capturedWasActive;
+    public int capturedX, capturedY;
+
+    public int pieceX, pieceY;
+
+    public MoveOption(GameObject piece, Vector2Int target)
     {
-        public GameObject piece;
-        public Vector2Int target;
-        public GameObject captured; 
+        this.piece = piece;
+        this.target = target;
 
-        public int pieceX, pieceY;
-
-        public MoveOption(GameObject piece, Vector2Int target)
-        {
-            this.piece = piece;
-            this.target = target;
-            this.captured = null;
-
-            ChessmanAI cm = piece.GetComponent<ChessmanAI>();
-            this.pieceX = cm.GetXBoard();
-            this.pieceY = cm.GetYBoard();
-        }
+        var cm = piece.GetComponent<ChessmanAI>();
+        pieceX = cm.GetXBoard();
+        pieceY = cm.GetYBoard();
     }
-
+}
