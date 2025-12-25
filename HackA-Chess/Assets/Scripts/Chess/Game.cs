@@ -181,7 +181,8 @@ public class Game : MonoBehaviour // Hàm quản lí bàn cờ
             {
                 Debug.LogWarning("[ApplyNetworkMove] Không tìm thấy Xe để nhập thành!");
             }
-        } 
+        }
+        NextTurn();
     }
 
     public void Winner(string playerWinner, bool notifyServer) // hàm trả về người thắng
@@ -214,19 +215,5 @@ public class Game : MonoBehaviour // Hàm quản lí bàn cờ
         Winner(playerWinner, false);
     }
 
-    public GameOverScreen  gameOverUI;
-    public void ForceSetTurn(string color)
-    {
-        if (gameOver) return;
-        currentPlayer = color;
-
-        if (infoText != null)
-        {
-            infoText.text =
-                $"You are: {myColor}\n" +
-                $"Turn: {currentPlayer}\n" +
-                $"Room: {GameSession.RoomId}\n" +
-                $"Opp: {GameSession.OpponentName}";
-        }
-    }
+    public GameOverScreen gameOverUI;
 }

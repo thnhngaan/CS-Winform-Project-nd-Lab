@@ -33,8 +33,6 @@ public class GameOverScreen : MonoBehaviour
         UserName.gameObject.SetActive(false);
         EnemyName.gameObject.SetActive(false);
         chatbox.SetActive(false);
-        Timer.gameObject.SetActive(false);
-        Op_Timer.gameObject.SetActive(false); 
         btnResign.gameObject.SetActive(false);
     }
 

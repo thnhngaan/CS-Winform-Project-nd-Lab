@@ -9,7 +9,6 @@ public class GameNetworkListener : MonoBehaviour // Hàm lắng nghe msg từ c�
 {
     [SerializeField] private Game game;
     [SerializeField] private TMP_Text statusText;
-    private string MyColor => (GameSession.MyColor ?? "white").Trim().ToLower();
     [SerializeField] private float gameOverDelay = 1.5f;
 
     private Coroutine _gameOverCo;
@@ -31,7 +30,6 @@ public class GameNetworkListener : MonoBehaviour // Hàm lắng nghe msg từ c�
         NetworkClient.Instance.OnLine -= HandleServerMessage;
     }
 
-
     private void HandleServerMessage(string msg)
     {
         // lắng nghe dữ liệu và lọc dữ liệu thành thành các case nhỏ
@@ -47,15 +45,6 @@ public class GameNetworkListener : MonoBehaviour // Hàm lắng nghe msg từ c�
                 break;
             case "GAME_OVER":
                 HandleGameOver(parts);
-                break;
-            case "TURN":
-                HandleTurn(parts);
-                break;
-            case "TIME":
-                HandleTime(parts);
-                break;
-            case "TIMEOUT":
-                HandleTimeout(parts);
                 break;
             case "RESIGNED":
                 HandleResigned(parts);
@@ -103,67 +92,6 @@ public class GameNetworkListener : MonoBehaviour // Hàm lắng nghe msg từ c�
     {
         yield return new WaitForSecondsRealtime(gameOverDelay);
         gameOverUI?.ShowGameOver(winnerColor);
-    }
-
-
-    [SerializeField] private TMP_Text myTimerText;
-    [SerializeField] private TMP_Text oppTimerText;
-    private void HandleTurn(string[] parts)
-    {
-        // TURN|roomId|turnColor|seconds
-        if (parts.Length < 4) return;
-        if (parts[1].Trim() != GameSession.RoomId) return;
-
-        string turnColor = parts[2].Trim().ToLower();
-        if (!int.TryParse(parts[3].Trim(), out int seconds)) seconds = 30;
-
-        string resetText = $"{seconds:0.0}s";
-
-        bool myTurn = (turnColor == MyColor);
-
-        if (myTurn)
-        {
-            if (myTimerText != null) myTimerText.text = resetText;
-        }
-        else
-        {
-            if (oppTimerText != null) oppTimerText.text = resetText;
-        }
-        // đồng thời set lượt để khóa/mở input
-        game?.ForceSetTurn(turnColor);
-    }
-
-    private void HandleTime(string[] parts)
-    {
-        // TIME|roomId|turnColor|remainingMs
-        if (parts.Length < 4) return;
-        if (parts[1].Trim() != GameSession.RoomId) return;
-
-        string turnColor = parts[2].Trim().ToLower();
-        if (!int.TryParse(parts[3].Trim(), out int ms)) return;
-        if (ms < 0) ms = 0;
-
-        string t = $"{ms / 1000f:0.0}s";
-        bool myTurn = (turnColor == MyColor);
-
-        if (myTurn)
-        {
-            if (myTimerText != null) myTimerText.text = t;
-        }
-        else
-        {
-            if (oppTimerText != null) oppTimerText.text = t;
-        }
-    }
-
-    private void HandleTimeout(string[] parts)
-    {
-        // TIMEOUT|roomId|loserColor|winnerColor
-        if (parts.Length < 4) return;
-        if (parts[1].Trim() != GameSession.RoomId) return;
-
-        string winnerColor = parts[3].Trim().ToLower();
-        game?.Winner(winnerColor, false);
     }
 
     [SerializeField] private StatusResignUI toast;
