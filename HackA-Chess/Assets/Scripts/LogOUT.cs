@@ -16,7 +16,7 @@ public class LogOUT : MonoBehaviour
             {
                 AudioManager.Instance.StopBGM();   
             }
-            await NetworkClient.Instance.SendAsync("LOGOUT");
+            await NetworkClient.Instance.SendAsync("LOGOUT|");
             SceneManager.LoadScene("Login");
         }
         catch (System.Exception ex)

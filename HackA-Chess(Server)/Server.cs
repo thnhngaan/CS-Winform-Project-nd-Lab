@@ -351,9 +351,7 @@ namespace HackA_Chess_Server_
                                 }
                                 await NotifyFriendsOnlineState(currentUsername, false);
                             }
-                            string response = "LOGOUT|SUCCESS";
-                            byte[] responsebytes = Encoding.UTF8.GetBytes(response);
-                            await stream.WriteAsync(responsebytes, 0, responsebytes.Length);
+                            
                             return;
                         }
                         if (parts[0] == "GETINFO")
@@ -1120,7 +1118,7 @@ namespace HackA_Chess_Server_
                             string resigner = currentUsername;
                             string resignerColor = (KeyUser(resigner) == KeyUser(host)) ? "white" : "black";
                             string winnerColor = (resignerColor == "white") ? "black" : "white";
-
+                            var elo = UpdateEloAndInsertHistory(int.Parse(roomId.Trim()), host, clientUser, winnerColor);
                             // 1) thông báo ai đầu hàng
                             await BroadcastRoom(host, clientUser, $"RESIGNED|{roomId}|{resigner}\n");
 

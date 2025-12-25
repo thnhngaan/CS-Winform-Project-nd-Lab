@@ -26,5 +26,6 @@ public class MatchHistoryItemUI : MonoBehaviour
         if (txtMyAfter) txtMyAfter.text = myAfter.ToString();
         if (txtOppAfter) txtOppAfter.text = oppAfter.ToString();
         if (time) time.text = timeplay;
+        if (txtResult) txtResult.text = myResult;
     }
 }
