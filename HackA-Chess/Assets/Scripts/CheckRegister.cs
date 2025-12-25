@@ -72,7 +72,7 @@ public class RegisterUI : MonoBehaviour
            string.IsNullOrEmpty(confirm) || string.IsNullOrEmpty(email) ||
            string.IsNullOrEmpty(fullname) || string.IsNullOrEmpty(phone))
         {
-            MessageBoxManager.Instance.ShowMessageBox("BÁO LỖI","Vui lòng nhập đầy đủ thông tin.");
+            MessageBoxManager.Instance.ShowMessageBox("BÁO LỖI", "Vui lòng nhập đầy đủ thông tin.");
             return;
         }
 
@@ -118,7 +118,7 @@ public class RegisterUI : MonoBehaviour
 
             if (result == "REGISTER|SUCCESS")
             {
-                MessageBoxManager.Instance.ShowMessageBox("THÔNG BÁO","Tạo tài khoản thành công");
+                MessageBoxManager.Instance.ShowMessageBox("THÔNG BÁO", "Tạo tài khoản thành công");
                 await Task.Delay(1000);
                 SceneManager.LoadScene("Login");
             }

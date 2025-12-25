@@ -181,7 +181,7 @@ public class Game : MonoBehaviour // Hàm quản lí bàn cờ
             {
                 Debug.LogWarning("[ApplyNetworkMove] Không tìm thấy Xe để nhập thành!");
             }
-        } 
+        }
         NextTurn();
     }
 
@@ -215,6 +215,5 @@ public class Game : MonoBehaviour // Hàm quản lí bàn cờ
         Winner(playerWinner, false);
     }
 
-    public GameOverScreen  gameOverUI;
-
+    public GameOverScreen gameOverUI;
 }

@@ -12,17 +12,45 @@ namespace Assets.Scripts
 {
     public class CheckLogin : MonoBehaviour
     {
+
         [Header("UI Controls")]
         public TMP_InputField usernameInput;
         public TMP_InputField passwordInput;
         public TMP_Text messageText;
+        public Button eyePassword;
 
         [Header("Next Scene / Panel")]
         public string NextScene;
 
-        private string serverIP = "127.0.0.1";// chỉnh sửa IP server nha, để người chơi nhập
+        private string serverIP = "127.0.0.1";// chỉnh sửa IP server nha, để người chơi nhập///////
         private int Port = 8080;
-        
+
+        private void Start()
+        {
+            // Gán sự kiện nút
+            passwordInput.contentType = TMP_InputField.ContentType.Password;
+            passwordInput.ForceLabelUpdate();
+            eyePassword.onClick.AddListener(() => TogglePassword(passwordInput));
+        }
+        private void TogglePassword(TMP_InputField field)
+        {
+            if (field == null) return;
+
+            if (field.contentType == TMP_InputField.ContentType.Password) //ẩn => hiện
+            {
+                field.contentType = TMP_InputField.ContentType.Standard;
+                field.inputType = TMP_InputField.InputType.Standard;
+            }
+            else //hiện => ẩn
+            {
+                field.contentType = TMP_InputField.ContentType.Password;
+                field.inputType = TMP_InputField.InputType.Password;
+            }
+            string temp = field.text;
+            field.text = "";
+            field.text = temp;
+            field.ForceLabelUpdate();
+        }
         //hàm event ấn nút đăng nhập nè
         public async void OnLoginButtonClicked()
         {

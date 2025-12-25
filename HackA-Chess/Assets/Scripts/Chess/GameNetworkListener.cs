@@ -3,12 +3,15 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Assets.Scripts;
+using System.Collections;
 
 public class GameNetworkListener : MonoBehaviour // Hàm lắng nghe msg từ các player
 {
     [SerializeField] private Game game;
     [SerializeField] private TMP_Text statusText;
+    [SerializeField] private float gameOverDelay = 1.5f;
 
+    private Coroutine _gameOverCo;
 
     private void Awake() // bắt đầu lắng nghe khi bật scene Game
     {
@@ -27,7 +30,6 @@ public class GameNetworkListener : MonoBehaviour // Hàm lắng nghe msg từ c�
         NetworkClient.Instance.OnLine -= HandleServerMessage;
     }
 
-
     private void HandleServerMessage(string msg)
     {
         // lắng nghe dữ liệu và lọc dữ liệu thành thành các case nhỏ
@@ -43,6 +45,9 @@ public class GameNetworkListener : MonoBehaviour // Hàm lắng nghe msg từ c�
                 break;
             case "GAME_OVER":
                 HandleGameOver(parts);
+                break;
+            case "RESIGNED":
+                HandleResigned(parts);
                 break;
         }
     }
@@ -63,17 +68,43 @@ public class GameNetworkListener : MonoBehaviour // Hàm lắng nghe msg từ c�
         if (game != null)
             game.ApplyNetworkMove(fromX, fromY, toX, toY); // cập nhật scene game 
     }
-
-    private void HandleGameOver(string[] parts) // hàm kết thúc game
-    {
-        // nghe msg theo định dạng GAME_OVER|roomId|winnerColor
+    private bool _handledGameOver = false;
+    private void HandleGameOver(string[] parts)
+    {   
+        // GAME_OVER|roomId|winnerColor
         if (parts.Length < 3) return;
 
-        string roomId = parts[1];
+        string roomId = parts[1].Trim();
         if (roomId != GameSession.RoomId) return;
 
-        string winnerColor = parts[2];
-        if (!game.IsGameOver())
-            game.Winner(winnerColor);  // chỉ hiển thị UI, không gửi ngược server
+        if (_handledGameOver) return;
+        _handledGameOver = true;
+
+        string winnerColor = parts[2].Trim().ToLower();
+
+        // Delay show gameover để kịp đọc toast
+        if (_gameOverCo != null) StopCoroutine(_gameOverCo);
+        _gameOverCo = StartCoroutine(ShowGameOverDelayed(winnerColor));
     }
+
+    [SerializeField] private GameOverScreen gameOverUI;
+    private IEnumerator ShowGameOverDelayed(string winnerColor)
+    {
+        yield return new WaitForSecondsRealtime(gameOverDelay);
+        gameOverUI?.ShowGameOver(winnerColor);
+    }
+
+    [SerializeField] private StatusResignUI toast;
+    private void HandleResigned(string[] parts)
+    {
+        if (parts.Length < 3) return;
+        string roomId = parts[1].Trim();
+        if (roomId != GameSession.RoomId) return;
+
+        string who = parts[2].Trim();
+        bool isMe = who.Equals(UserSession.CurrentUsername, System.StringComparison.OrdinalIgnoreCase);
+
+        toast?.Show(isMe ? "Đầu hàng" : $"{who} đầu hàng.");
+    }
+
 }
