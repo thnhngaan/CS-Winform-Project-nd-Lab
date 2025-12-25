@@ -22,9 +22,10 @@ namespace Assets.Scripts
         [Header("Next Scene / Panel")]
         public string NextScene;
 
-        private string serverIP = "127.0.0.1";// chỉnh sửa IP server nha, để người chơi nhập
+        private string serverIP = "127.0.0.1";// chỉnh sửa IP server nha, để người chơi nhập///////
         private int Port = 8080;
 
+<<<<<<< HEAD
         private void Start()
         {
             // Gán sự kiện nút
@@ -52,6 +53,8 @@ namespace Assets.Scripts
             field.ForceLabelUpdate();
         }
 
+=======
+>>>>>>> ngan
         //hàm event ấn nút đăng nhập nè
         public async void OnLoginButtonClicked()
         {

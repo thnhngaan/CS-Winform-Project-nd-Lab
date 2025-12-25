@@ -24,7 +24,6 @@ public class GameNameUI : MonoBehaviour
             ? GameSession.OpponentName
             : GameSession.OpponentFullName;
 
-        // ✅ POV: mình luôn ở dưới
         if (nameNear != null) nameNear.text = myName;
         if (nameFar != null) nameFar.text = oppName;
     }

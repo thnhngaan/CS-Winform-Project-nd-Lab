@@ -1,6 +1,11 @@
 fileFormatVersion: 2
+<<<<<<<< HEAD:HackA-Chess/Assets/Prefabs/MovePlate_AI.prefab.meta
 guid: 8d0ee0718c6b86340b28d9f21c140296
 PrefabImporter:
+========
+guid: 127e7c438202b8a49a5843d0a0884247
+DefaultImporter:
+>>>>>>>> origin/DucLong:HackA-Chess/Assets/_Recovery/0 (12).unity.meta
   externalObjects: {}
   userData: 
   assetBundleName: 
