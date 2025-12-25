@@ -1,39 +1,39 @@
-﻿using System.Threading.Tasks;
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using Assets.Scripts;
 
-public class GameNetworkListener : MonoBehaviour // Hàm lắng nghe msg từ các player
+public class GameNetworkListener : MonoBehaviour
 {
     [SerializeField] private Game game;
     [SerializeField] private TMP_Text statusText;
+    [SerializeField] private GameOverScreen gameOverUI;
 
+    private bool _handledGameOver = false;
 
-    private void Awake() // bắt đầu lắng nghe khi bật scene Game
+    private void Awake()
     {
-        if (game == null)
-            game = FindObjectOfType<Game>();
+        if (game == null) game = FindObjectOfType<Game>();
+        if (gameOverUI == null) gameOverUI = FindObjectOfType<GameOverScreen>();
     }
 
-    private async void OnEnable() // Lắng nghe
+    private void OnEnable()
     {
         NetworkClient.Instance.OnLine -= HandleServerMessage;
         NetworkClient.Instance.OnLine += HandleServerMessage;
+        _handledGameOver = false;
     }
 
-    private void OnDisable() // Tắt lắng nghe
+    private void OnDisable()
     {
-        NetworkClient.Instance.OnLine -= HandleServerMessage;
+        if (NetworkClient.Instance != null)
+            NetworkClient.Instance.OnLine -= HandleServerMessage;
     }
-
 
     private void HandleServerMessage(string msg)
     {
-        // lắng nghe dữ liệu và lọc dữ liệu thành thành các case nhỏ
         Debug.Log("[GameNet] Received: " + msg);
-        
-        string[] parts = msg.Split('|');
+
+        var parts = msg.Trim().Split('|');
         if (parts.Length == 0) return;
 
         switch (parts[0])
@@ -41,18 +41,23 @@ public class GameNetworkListener : MonoBehaviour // Hàm lắng nghe msg từ c�
             case "OPP_MOVE":
                 HandleOppMove(parts);
                 break;
+
             case "GAME_OVER":
                 HandleGameOver(parts);
                 break;
+
+                // nếu bạn muốn xử lý GETINFO ngay tại scene game:
+                // case "GETINFO":
+                //     HandleGetInfo(parts);
+                //     break;
         }
     }
 
-    private void HandleOppMove(string[] parts) // hàm lắng nghe nước đi của đối thủ
+    private void HandleOppMove(string[] parts)
     {
-        // nghe msg theo định dạng OPP_MOVE|roomId|fromX|fromY|toX|toY
         if (parts.Length < 6) return;
 
-        string roomId = parts[1];
+        string roomId = parts[1].Trim();
         if (roomId != GameSession.RoomId) return;
 
         int fromX = int.Parse(parts[2]);
@@ -60,20 +65,32 @@ public class GameNetworkListener : MonoBehaviour // Hàm lắng nghe msg từ c�
         int toX = int.Parse(parts[4]);
         int toY = int.Parse(parts[5]);
 
-        if (game != null)
-            game.ApplyNetworkMove(fromX, fromY, toX, toY); // cập nhật scene game 
+        game?.ApplyNetworkMove(fromX, fromY, toX, toY);
     }
 
-    private void HandleGameOver(string[] parts) // hàm kết thúc game
+    private void HandleGameOver(string[] parts)
     {
-        // nghe msg theo định dạng GAME_OVER|roomId|winnerColor
-        if (parts.Length < 3) return;
+        //GAME_OVER|roomId|WIN/LOSE|winnerColor
+        if (parts.Length < 8) return;
 
-        string roomId = parts[1];
+        string roomId = parts[1].Trim();
         if (roomId != GameSession.RoomId) return;
 
-        string winnerColor = parts[2];
-        if (!game.IsGameOver())
-            game.Winner(winnerColor);  // chỉ hiển thị UI, không gửi ngược server
+        if (_handledGameOver) return; //tránh show 2 lần
+        _handledGameOver = true;
+
+        string result = parts[2].Trim();      //WIN / LOSE (có thể dùng để show text)
+        string winnerColor = parts[3].Trim(); //white / black
+
+        //show UI: chỉ cần winnerColor
+        gameOverUI?.ShowGameOver(winnerColor);
+
+        //optional: statusText
+        if (statusText != null)
+            statusText.text = (result == "WIN") ? "You win!" : "You lose!";
+
+        //refresh info
+        string u = UserSession.CurrentUsername;
+        _ = NetworkClient.Instance.SendAsync($"GETINFO|{u}");
     }
 }

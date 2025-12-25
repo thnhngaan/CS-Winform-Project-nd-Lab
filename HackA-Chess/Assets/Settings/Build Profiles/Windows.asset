@@ -20,7 +20,7 @@ MonoBehaviour:
     rid: 2619967409737957377
   m_OverrideGlobalSceneList: 1
   m_Scenes:
-  - m_enabled: 1
+  - m_enabled: 0
     m_path: Assets/Scenes/Intro/IntroGame.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Login.unity

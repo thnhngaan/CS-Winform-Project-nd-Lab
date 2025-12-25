@@ -31,6 +31,7 @@ public class GetInfo : MonoBehaviour
     public TMP_Text loss;
     public TMP_Text elopoint;
     public TMP_Text name;
+    [SerializeField] Image avt;
 
     private async void Start()
     {
@@ -98,7 +99,7 @@ public class GetInfo : MonoBehaviour
         {
             avatarButton.image.sprite = finalAvatar;
         }
-
+        avt.sprite = finalAvatar;
         if (fullname != null) fullname.text = fullNameStr;
         if (name != null) name.text = fullNameStr;
 

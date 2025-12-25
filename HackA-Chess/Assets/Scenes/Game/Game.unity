@@ -1175,6 +1175,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameNetworkListener
   game: {fileID: 1212753198}
   statusText: {fileID: 0}
+  gameOverUI: {fileID: 1161149030}
 --- !u!4 &454809213
 Transform:
   m_ObjectHideFlags: 0

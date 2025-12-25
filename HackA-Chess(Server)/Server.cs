@@ -1,25 +1,33 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics.Eventing.Reader;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Mail;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
+using System.Security.Cryptography.Pkcs;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 using System.Windows.Forms;
-using System.Collections.Concurrent;
 using HackA_Chess_Server_;
+using MimeKit.Cryptography;
+using MimeKit;
+using MailKit.Net;
+using MailKit.Net.Smtp;
 using Microsoft.Data.SqlClient;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
-using System.Security.Cryptography.Pkcs;
-using System.Diagnostics.Eventing.Reader;
-using System.Web;
 
 namespace HackA_Chess_Server_
 {
@@ -157,10 +165,73 @@ namespace HackA_Chess_Server_
                     while (client.Connected && !isLogin) //vòng while này để kết nối 1 lần rồi close dành cho login và register
                     {
                         string data = await ReceiveMessage(stream);
-                        data.Trim();
-                        if (data == null) break;
+                        if (data == null) return;     
+                        data = data.Trim();
                         AppendText($"Client ({clientEP}) gửi 1 thông điệp: {data}");
                         string[] parts = data.Split('|', StringSplitOptions.RemoveEmptyEntries);
+                        if (parts[0] == "RESET_REQ")
+                        {
+                            string email = parts[1].Trim();
+                            string k = KeyEmail(email);
+                            string msgemail;
+                            if (!EmailExists(email))
+                            {
+                                msgemail = "RESET_REQ|FAIL|NOT_FOUND\n";
+                                byte[] bytesfail = Encoding.UTF8.GetBytes(msgemail);
+                                await stream.WriteAsync(bytesfail, 0, bytesfail.Length);
+                                await stream.FlushAsync();
+                                continue;
+                            }
+
+                            string otp = GenerateOtp6();
+                            OTPStore[k] = new OtpEntry
+                            {
+                                Otp = otp,
+                                ExpiresAtUtc = DateTime.UtcNow.AddSeconds(60),
+                                Attempts = 0
+                            };
+
+                            SendOtpEmail(email, otp);
+                            msgemail = "RESET_REQ|OK\n";
+                            byte[] bytes = Encoding.UTF8.GetBytes(msgemail);
+                            await stream.WriteAsync(bytes, 0, bytes.Length);
+                            await stream.FlushAsync();
+                            continue;
+                        }
+                        if (parts[0] == "RESET_VERIFY")
+                        {
+                            string msgemail;
+                            // RESET_VERIFY|email|otp|newPasswordHash
+                            if (parts.Length < 4)
+                            {
+                                msgemail = "RESET_VERIFY|FAIL|BAD_FORMAT\n";
+                                byte[] bytes = Encoding.UTF8.GetBytes(msgemail);
+                                await stream.WriteAsync(bytes, 0, bytes.Length);
+                                await stream.FlushAsync();
+                                continue;
+                            }
+                            string email = parts[1].Trim();
+                            string otp = parts[2].Trim();
+                            string newPassHash = parts[3].Trim();
+
+                            if (ResetPasswordByOtp(email, otp, newPassHash, out string reason))
+                            {
+                                msgemail = "RESET_VERIFY|OK\n";
+                                byte[] bytes = Encoding.UTF8.GetBytes(msgemail);
+                                await stream.WriteAsync(bytes, 0, bytes.Length);
+                                await stream.FlushAsync();
+                                continue;
+                            }
+                            else
+                            {
+                                msgemail = $"RESET_VERIFY|FAIL|{reason}\n";
+                                byte[] bytes = Encoding.UTF8.GetBytes(msgemail);
+                                await stream.WriteAsync(bytes, 0, bytes.Length);
+                                await stream.FlushAsync();
+                                continue;
+                            }
+                            continue;
+                        }
                         if (parts[0] == "LOGIN") //login
                         {
                             if (parts.Length < 3)
@@ -252,11 +323,10 @@ namespace HackA_Chess_Server_
                                 return;
                             }
                         }
+                      
                     }
                     while (client.Connected) //còn vòng while này dành cho các tác vụ khác khi đã login vào server và nó sẽ giữ connected cho đến khi logout
                     {
-                      
-
                         string msg = await ReceiveMessage(stream);
                         if (msg == null)
                         {
@@ -270,6 +340,7 @@ namespace HackA_Chess_Server_
                         }
                         AppendText($"[Đã đăng nhập] {clientEP}: {msg}");
                         string[] parts = msg.Split('|');
+                     
                         if (parts[0] == "LOGOUT")
                         {
                             if (!string.IsNullOrEmpty(currentUsername))
@@ -454,7 +525,7 @@ namespace HackA_Chess_Server_
                             {
                                 try
                                 {
-                                    string forward = $"OPP_MOVE|{roomId}|{parts[2]}|{parts[3]}|{parts[4]}|{parts[5]}";
+                                    string forward = $"OPP_MOVE|{roomId}|{parts[2]}|{parts[3]}|{parts[4]}|{parts[5]}\n";
                                     byte[] data = Encoding.UTF8.GetBytes(forward);
                                     await oppClient.GetStream().WriteAsync(data, 0, data.Length);
                                 }
@@ -501,38 +572,122 @@ namespace HackA_Chess_Server_
 
                         if (parts[0] == "GAME_OVER")
                         {
-                            // GAME_OVER|roomId|winnerColor
+                            //GAME_OVER|roomId|winnerColor
                             if (parts.Length < 3)
                                 continue;
 
-                            string roomId = parts[1];
-                            string winnerColor = parts[2];
+                            string roomId = parts[1].Trim();
+                            string winnerColor = parts[2].Trim();
 
-                            string opponent = GetOpponentOf(roomId, currentUsername);
-                            if (!string.IsNullOrEmpty(opponent))
+                            try
                             {
-                                TcpClient oppClient = null;
-                                lock (OnlineUsers)
+                                //Lấy 2 người chơi trong room
+                                var roomPlayers = GetRoomPlayers(roomId); //host, client
+                                if (roomPlayers == null)
                                 {
-                                    OnlineUsers.TryGetValue(KeyUser(opponent), out oppClient);
+                                    AppendText($"[GAME_OVER] Room {roomId} not found");
+                                    continue;
+                                }
+                                string hostroom = roomPlayers.Value.Host;
+                                string clientroom = roomPlayers.Value.Client;
+
+                                //Xác định ai là winner theo color
+                                string winnerUser, loserUser;
+                                if (winnerColor == "white")
+                                {
+                                    winnerUser = hostroom;
+                                    loserUser = clientroom;
+                                }
+                                else if (winnerColor == "black")
+                                {
+                                    winnerUser = clientroom;
+                                    loserUser = hostroom;
+                                }
+                                else
+                                {
+                                    AppendText($"[GAME_OVER] winnerColor invalid: {winnerColor}");
+                                    continue;
                                 }
 
-                                if (oppClient != null)
+                                //Chống double finish (quan trọng)
+                                if (!TryMarkRoomFinished(roomId))
                                 {
-                                    try
-                                    {
-                                        string forward = $"GAME_OVER|{roomId}|{winnerColor}";
-                                        byte[] data = Encoding.UTF8.GetBytes(forward);
-                                        await oppClient.GetStream().WriteAsync(data, 0, data.Length);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        AppendText($"[GAME_OVER] Lỗi gửi cho {opponent}: {ex.Message}");
-                                    }
+                                    AppendText($"[GAME_OVER] Room {roomId} already finished -> ignore");
+                                    continue;
                                 }
+                                var elo = UpdateEloAndInsertHistory(int.Parse(roomId.Trim()), hostroom, clientroom,winnerColor);
+                                //Gửi kết quả cho cả 2
+                                if (winnerUser == hostroom) 
+                                {
+                                    SendToUserIfOnline(winnerUser, $"GAME_OVER|{roomId}|WIN|{winnerColor}|{elo.beforeW}|{elo.afterW}|{elo.beforeB}|{elo.afterB}\n");
+                                    SendToUserIfOnline(loserUser, $"GAME_OVER|{roomId}|LOSE|{winnerColor}|{elo.beforeB}|{elo.afterB}|{elo.beforeW}|{elo.afterW}\n");
+                                }
+                                else 
+                                {
+                                    SendToUserIfOnline(winnerUser, $"GAME_OVER|{roomId}|WIN|{winnerColor}|{elo.beforeB}|{elo.afterB}|{elo.beforeW}|{elo.afterW}\n");
+                                    SendToUserIfOnline(loserUser, $"GAME_OVER|{roomId}|LOSE|{winnerColor}|{elo.beforeW}|{elo.afterW}|{elo.beforeB}|{elo.afterB}\n");
+                                }
+                                
+                                AppendText($"[GAME_OVER] Room {roomId} winner={winnerUser} loser={loserUser} color={winnerColor}");
+                            }
+                            catch (Exception ex)
+                            {
+                                AppendText($"[GAME_OVER] Error: {ex.Message}");
                             }
 
-                            // TODO: sau này update lịch sử đấu / ELO ở đây
+
+                            continue;
+                        }
+                        if (parts[0] == "MATCHHISTORY")
+                        {
+                            // MATCHHISTORY|username|topN
+                            if (parts.Length < 2) continue;
+
+                            string username = parts[1].Trim();
+                            int topN = 50;
+                            int days = 7;
+
+                            if (parts.Length >= 3 && int.TryParse(parts[2], out int n)) topN = Math.Clamp(n, 1, 200);
+                            if (parts.Length >= 4 && int.TryParse(parts[3], out int d)) days = Math.Clamp(d, 1, 365);
+
+                            try
+                            {
+                                var rows = GetMatchHistoryUiRows(username, topN,days);
+
+                                string sb="";
+                                sb+=($"MATCHHISTORY|OK|{rows.Count}|");
+
+                                foreach (var r in rows)
+                                {
+                                    string iso = r.PlayedAt.ToString("o");
+                                    string dateText;
+                                    if (DateTime.TryParse(iso, null, DateTimeStyles.RoundtripKind, out var dt))
+                                    {
+                                        dateText = dt.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+                                    }
+                                    else
+                                    {
+                                        dateText = iso; 
+                                    }
+                                    sb +=($"{dateText},{r.MyFullName},{r.OppFullName},{r.MyDelta},{r.OppDelta},{r.MyAfter},{r.OppAfter}|");
+                                }
+                                sb=sb.Substring(0,sb.Length - 1);
+                                sb += '\n';
+                                byte[] bytes = Encoding.UTF8.GetBytes(sb.ToString());
+                                await stream.WriteAsync(bytes, 0, bytes.Length);
+                                await stream.FlushAsync();
+
+                                AppendText($"[MATCHHISTORY] {username} -> {rows.Count} rows");
+                            }
+                            catch (Exception ex)
+                            {
+                                string err = $"MATCHHISTORY|FAIL|{ex.Message}\n";
+                                byte[] bytes = Encoding.UTF8.GetBytes(err);
+                                await stream.WriteAsync(bytes, 0, bytes.Length);
+                                await stream.FlushAsync();
+
+                                AppendText($"[MATCHHISTORY] Error: {ex.Message}");
+                            }
 
                             continue;
                         }
@@ -583,6 +738,20 @@ namespace HackA_Chess_Server_
                             await stream.WriteAsync(data, 0, data.Length);
                             await stream.FlushAsync();
                             continue;
+                        }
+                        if (parts[0] == "UPDATEAVATAR")
+                        {
+                            //UPDATEAVATAR|username|avatarKey
+                            string username = parts[1].Trim();
+                            string avatarKey = parts[2].Trim();
+
+                            bool ok = UpdateAvatarInDatabase(username, avatarKey);
+
+                            string response = ok ? $"UPDATEAVATAR|SUCCESS|{avatarKey}\n" : "UPDATEAVATAR|FAIL\n";
+                            AppendText(response);
+                            byte[] bytes = Encoding.UTF8.GetBytes(response);
+                            await stream.WriteAsync(bytes, 0, bytes.Length);
+                            await stream.FlushAsync();
                         }
                         foreach (var raw in lines)
                         {
@@ -1107,6 +1276,64 @@ namespace HackA_Chess_Server_
                         if (currentUser == host) return client;
                         if (currentUser == client) return host;
                         return null;
+                    }
+                }
+            }
+        }
+        private bool TryMarkRoomFinished(string roomId)
+        {
+            using var conn = Connection.GetSqlConnection();
+            conn.Open();
+
+            //Chỉ mark nếu IsClosed=0, đảm bảo atomic
+            using var cmd = new SqlCommand(@"UPDATE ROOM SET IsClosed = 1 WHERE RoomID = @id AND IsClosed = 0;", conn);
+
+            cmd.Parameters.AddWithValue("@id", roomId);
+
+            int rows = cmd.ExecuteNonQuery();
+            return rows > 0; 
+        }
+        private async void SendToUserIfOnline(string username, string message)
+        {
+            TcpClient cli = null;
+            lock (OnlineUsers)
+            {
+                OnlineUsers.TryGetValue(KeyUser(username), out cli);
+            }
+
+            if (cli == null) return;
+
+            try
+            {
+                byte[] data = Encoding.UTF8.GetBytes(message);
+                await cli.GetStream().WriteAsync(data, 0, data.Length);
+                await cli.GetStream().FlushAsync();
+            }
+            catch (Exception ex)
+            {
+                AppendText($"[SendToUser] Lỗi gửi cho {username}: {ex.Message}");
+            }
+        }
+
+        private (string Host, string Client)? GetRoomPlayers(string roomId)
+        {
+            using (var conn = Connection.GetSqlConnection())
+            {
+                conn.Open();
+                string sql = "SELECT UsernameHost, UsernameClient FROM ROOM WHERE RoomID = @id";
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", roomId);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (!reader.Read()) return null;
+
+                        string host = reader["UsernameHost"]?.ToString();
+                        string client = reader["UsernameClient"]?.ToString();
+                        if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(client))
+                            return null;
+
+                        return (host.Trim(), client.Trim());
                     }
                 }
             }
@@ -1850,5 +2077,478 @@ namespace HackA_Chess_Server_
             return (int)cmd.ExecuteScalar() > 0;
         }
         #endregion
+        #region UPDATE AVATAR
+        private bool UpdateAvatarInDatabase(string username, string avatarKey)
+        {
+            using (var conn = Connection.GetSqlConnection())
+            {
+                conn.Open();
+                using (var cmd = new SqlCommand(
+                    "UPDATE UserDB SET Avatar=@avt WHERE Username=@u", conn))
+                {
+                    cmd.Parameters.AddWithValue("@avt", avatarKey);
+                    cmd.Parameters.AddWithValue("@u", username);
+
+                    int rows = cmd.ExecuteNonQuery();
+                    return rows > 0;
+                }
+            }
+        }
+        #endregion
+        #region HANDDE ELO
+        private (int beforeW, int afterW, int beforeB, int afterB) UpdateEloAndInsertHistory(int roomId, string playerWhite, string playerBlack, string winnerColor)
+        { 
+            using var conn = Connection.GetSqlConnection();
+            conn.Open();
+            using var tx = conn.BeginTransaction();
+            try
+            {
+                int beforeW = GetElo(conn, tx, playerWhite);
+                int beforeB = GetElo(conn, tx, playerBlack);
+
+                int afterW = beforeW, afterB = beforeB;
+
+                if (winnerColor == "draw")
+                    (afterW, afterB) = EloCalculator.Calculate(beforeW, beforeB, GameResult.Draw);
+                else if (winnerColor == "white")
+                    (afterW, afterB) = EloCalculator.Calculate(beforeW, beforeB, GameResult.Win);
+                else if (winnerColor == "black")
+                    (afterW, afterB) = EloCalculator.Calculate(beforeW, beforeB, GameResult.Loss);
+                else
+                    throw new Exception("winnerColor invalid: " + winnerColor);
+
+                SetElo(conn, tx, playerWhite, afterW);
+                SetElo(conn, tx, playerBlack, afterB);
+
+                string winnerUsername = winnerColor == "draw" ? null : (winnerColor == "white" ? playerWhite : playerBlack);
+                string loserUsername = winnerColor == "white" ? playerBlack : playerWhite;
+                // Result theo góc nhìn Player1 = playerWhite
+                string resultForPlayer1 =winnerColor == "draw" ? "DRAW" : winnerColor == "white" ? "WIN" : "LOSS";
+             
+                InsertMatchHistory(conn, tx, roomId, playerWhite, playerBlack,beforeW, afterW, beforeB, afterB, winnerUsername,resultForPlayer1);
+                UpdateWinLoss(conn, tx, winnerUsername, loserUsername);
+
+                tx.Commit();
+                return (beforeW, afterW, beforeB, afterB);
+            }
+            catch
+            {
+                tx.Rollback();
+                throw;
+            }
+        }
+
+        private int GetElo(SqlConnection conn, SqlTransaction tx, string username)
+        {
+            using var cmd = new SqlCommand("SELECT Elo FROM UserDB WHERE Username=@u", conn, tx);
+            cmd.Parameters.AddWithValue("@u", username);
+            object o = cmd.ExecuteScalar();
+            return (o == null || o == DBNull.Value) ? 1200 : Convert.ToInt32(o);
+        }
+
+        private void SetElo(SqlConnection conn, SqlTransaction tx, string username, int elo)
+        {
+            using var cmd = new SqlCommand("UPDATE UserDB SET Elo=@e WHERE Username=@u", conn, tx);
+            cmd.Parameters.AddWithValue("@e", elo);
+            cmd.Parameters.AddWithValue("@u", username);
+            cmd.ExecuteNonQuery();
+        }
+        private void UpdateWinLoss(SqlConnection conn, SqlTransaction tx, string winnerUser, string loserUser)
+        {
+            //winner +1 win
+            using (var cmd = new SqlCommand(@"UPDATE UserDB
+                                              SET TotalWin = ISNULL(TotalWin, 0) + 1
+                                              WHERE Username = @u;", conn, tx))
+            {
+                cmd.Parameters.AddWithValue("@u", winnerUser);
+                cmd.ExecuteNonQuery();
+            }
+
+            //loser +1 loss
+            using (var cmd = new SqlCommand(@"UPDATE UserDB
+                                              SET TotalLoss = ISNULL(TotalLoss, 0) + 1
+                                              WHERE Username = @u;", conn, tx))
+            {
+                cmd.Parameters.AddWithValue("@u", loserUser);
+                cmd.ExecuteNonQuery();
+            }
+        }
+        private void InsertMatchHistory(SqlConnection conn, SqlTransaction tx,int roomId, string p1, string p2,int before1, int after1, int before2, int after2, string winnerUsername,string result)
+        {
+            using var cmd = new SqlCommand(@"
+INSERT INTO MatchHistory(RoomID, PlayedAt, Player1, Player2,
+    EloBefore1, EloAfter1, EloBefore2, EloAfter2, WinnerUsername, Result)
+VALUES(@room, SYSUTCDATETIME(), @p1, @p2, @b1, @a1, @b2, @a2, @win, @res);", conn, tx);
+
+            cmd.Parameters.AddWithValue("@room", roomId);
+            cmd.Parameters.AddWithValue("@p1", p1);
+            cmd.Parameters.AddWithValue("@p2", p2);
+            cmd.Parameters.AddWithValue("@b1", before1);
+            cmd.Parameters.AddWithValue("@a1", after1);
+            cmd.Parameters.AddWithValue("@b2", before2);
+            cmd.Parameters.AddWithValue("@a2", after2);
+            cmd.Parameters.AddWithValue("@win", (object)winnerUsername ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@res", result);
+            cmd.ExecuteNonQuery();
+        }
+        #endregion
+        #region MatchHistory
+        public class MatchHistoryUiRow
+        {
+            public DateTime PlayedAt { get; set; }
+            public string MyFullName { get; set; } = "";
+            public string OppFullName { get; set; } = "";
+            public int MyDelta { get; set; }
+            public int OppDelta { get; set; }
+            public int MyAfter { get; set; }
+            public int OppAfter { get; set; }
+        }
+        private List<MatchHistoryUiRow> GetMatchHistoryUiRows(string me, int topN, int days)
+        {
+            var list = new List<MatchHistoryUiRow>();
+
+            using var conn = Connection.GetSqlConnection();
+            conn.Open();
+
+            string sql = @"
+SELECT TOP (@TopN)
+    mh.PlayedAt,
+    MyFullName  = uMe.FullName,
+    OppFullName = uOpp.FullName,
+
+    MyAfter  = CASE WHEN mh.Player1 = @Username THEN mh.EloAfter1 ELSE mh.EloAfter2 END,
+    OppAfter = CASE WHEN mh.Player1 = @Username THEN mh.EloAfter2 ELSE mh.EloAfter1 END,
+
+    MyDelta  = (CASE WHEN mh.Player1 = @Username THEN mh.EloAfter1 ELSE mh.EloAfter2 END)
+            - (CASE WHEN mh.Player1 = @Username THEN mh.EloBefore1 ELSE mh.EloBefore2 END),
+
+    OppDelta = (CASE WHEN mh.Player1 = @Username THEN mh.EloAfter2 ELSE mh.EloAfter1 END)
+            - (CASE WHEN mh.Player1 = @Username THEN mh.EloBefore2 ELSE mh.EloBefore1 END)
+FROM MatchHistory mh
+JOIN UserDB uMe
+  ON uMe.Username = @Username
+JOIN UserDB uOpp
+  ON uOpp.Username = CASE WHEN mh.Player1 = @Username THEN mh.Player2 ELSE mh.Player1 END
+WHERE (mh.Player1 = @Username OR mh.Player2 = @Username)
+  AND mh.PlayedAt >= DATEADD(DAY, -@Days, SYSUTCDATETIME())
+ORDER BY mh.PlayedAt DESC, mh.MatchID DESC;";
+
+            using var cmd = new SqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@Username", me);
+            cmd.Parameters.AddWithValue("@TopN", topN);
+            cmd.Parameters.AddWithValue("@Days", days);
+
+            using var rd = cmd.ExecuteReader();
+            while (rd.Read())
+            {
+                list.Add(new MatchHistoryUiRow
+                {
+                    PlayedAt = rd.GetDateTime(0),
+                    MyFullName = rd.GetString(1),
+                    OppFullName = rd.GetString(2),
+                    MyAfter = rd.GetInt32(3),
+                    OppAfter = rd.GetInt32(4),
+                    MyDelta = rd.GetInt32(5),
+                    OppDelta = rd.GetInt32(6),
+                });
+            }
+
+            return list;
+        }
+        #endregion
+        #region OTPEmail
+        public class OtpEntry
+        {
+            public string Otp;
+            public DateTime ExpiresAtUtc;
+            public int Attempts;
+        }
+        private static ConcurrentDictionary<string, OtpEntry> OTPStore = new();
+        private static string KeyEmail(string email) => (email ?? "").Trim().ToLowerInvariant();
+        private static string GenerateOtp6()
+        {
+            int code = RandomNumberGenerator.GetInt32(0, 1000000);
+            return code.ToString("D6");
+        }
+        private bool EmailExists(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email)) return false;
+            using var conn = Connection.GetSqlConnection();
+            conn.Open();
+            using var cmd = new SqlCommand("SELECT 1 FROM UserDB WHERE Email = @e",conn);
+            cmd.Parameters.AddWithValue("@e", email.Trim());
+            object o = cmd.ExecuteScalar();
+            return o != null;
+        }
+        private async void SendOtpEmail(string email, string otp)
+        {
+            string clientIPAddress;
+            MailKit.Net.Smtp.SmtpClient clientemail = new MailKit.Net.Smtp.SmtpClient();
+            clientemail.Connect("smtp.gmail.com", 465, true);
+            clientemail.Authenticate("24521013@gm.uit.edu.vn", "qouq iofg nkqm skyz");
+            clientIPAddress = "24521013@gm.uit.edu.vn";
+            var message = new MimeMessage();
+            message.From.Add(new MailboxAddress("HACKA-CHESS SERVICE", clientIPAddress));
+            message.To.Add(new MailboxAddress("", email));
+            message.Subject = $"HACKA-CHESS - GỬI OTP RESET PASSWORD";
+
+            var builder = new BodyBuilder();
+            builder.HtmlBody = $@"
+<!DOCTYPE html>
+<html lang=""vi"">
+<head>
+    <meta charset=""UTF-8"">
+    <title>[HACKA-CHESS] Mã xác thực đặt lại mật khẩu</title>
+</head>
+
+<body style=""margin:0; padding:0; font-family:Arial, Helvetica, sans-serif;"">
+
+<!-- Outer background -->
+<table width=""100%"" cellpadding=""0"" cellspacing=""0""
+       background=""https://i.pinimg.com/736x/7a/a8/3b/7aa83bce264bd3b919a65d9a5dab2464.jpg""
+       style=""
+           background-color:#0f172a;
+           background-image:url('https://i.pinimg.com/736x/7a/a8/3b/7aa83bce264bd3b919a65d9a5dab2464.jpg');
+           background-repeat:no-repeat;
+           background-position:center;
+           background-size:cover;
+           padding:40px 0;
+       "">
+    <tr>
+        <td align=""center"">
+
+            <!-- Main container -->
+            <table width=""600"" cellpadding=""0"" cellspacing=""0""
+                   style=""
+                       background-color:#ffffff;
+                       border-radius:8px;
+                       overflow:hidden;
+                       box-shadow:0 8px 24px rgba(0,0,0,0.25);
+                   "">
+
+                <!-- Header -->
+                <tr>
+                    <td align=""center"" style=""background-color:#0f172a; padding:25px;"">
+                        <span style=""
+                            color:#ffffff;
+                            font-size:22px;
+                            font-weight:bold;
+                            letter-spacing:1px;
+                        "">
+                            HACKA-CHESS
+                        </span>
+                    </td>
+                </tr>
+
+                <!-- Icon -->
+                <tr>
+                    <td align=""center"" style=""padding:30px 20px 10px;"">
+                        <img src=""https://img.icons8.com/ios-filled/100/1e293b/lock-2.png""
+                             width=""60"" alt=""Lock"">
+                    </td>
+                </tr>
+
+                <!-- Title -->
+                <tr>
+                    <td align=""center"" style=""padding:10px 40px;"">
+                        <h2 style=""margin:0; color:#0f172a;"">
+                            Đặt lại mật khẩu
+                        </h2>
+                    </td>
+                </tr>
+
+                <!-- Content -->
+                <tr>
+                    <td style=""
+                        padding:20px 40px;
+                        color:#334155;
+                        font-size:14px;
+                        line-height:1.6;
+                    "">
+                        Xin chào bạn,<br><br>
+                        Chúng tôi nhận được yêu cầu <b>đặt lại mật khẩu</b> cho tài khoản của bạn
+                        trên hệ thống <b>HACKA-CHESS</b>.<br>
+                        Vui lòng sử dụng mã xác thực bên dưới để tiếp tục.
+                    </td>
+                </tr>
+
+                <!-- OTP -->
+                <tr>
+                    <td align=""center"" style=""padding:30px 40px;"">
+                        <div style=""
+                            background-color:#f1f5f9;
+                            border:2px dashed #2563eb;
+                            border-radius:8px;
+                            padding:20px 30px;
+                            font-size:32px;
+                            font-weight:bold;
+                            letter-spacing:6px;
+                            color:#2563eb;
+                            display:inline-block;
+                        "">
+                            {otp}
+                        </div>
+                    </td>
+                </tr>
+
+                <!-- OTP note -->
+                <tr>
+                    <td style=""
+                        padding:10px 40px 30px;
+                        color:#64748b;
+                        font-size:13px;
+                        text-align:center;
+                        line-height:1.6;
+                    "">
+                        Mã xác thực này sẽ hết hạn trong vòng <b>60 giây</b>.<br>
+                        Vui lòng không chia sẻ thông tin này cho bất kỳ ai.
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td style=""background-color:#0f172a; padding:20px; color:#cbd5f5; font-size:12px;"">
+                        <table width=""100%"">
+                            <tr>
+                                <td>
+                                    HACKA-CHESS<br>
+                                    Email: support@hackachess.com<br>
+                                    Website: https://hacka-chess.example
+                                </td>
+                                <td align=""right"">
+                                    © 2025 HACKA-CHESS<br>
+                                    All rights reserved
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+            </table>
+            <!-- End container -->
+
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>
+";
+            builder.TextBody =$"HACKA-CHESS Reset Password\nOTP: {otp}\nMã có hiệu lực 60 giây."; 
+            message.Body = builder.ToMessageBody();
+            clientemail.Send(message);
+            clientemail.Disconnect(true);
+        }
+        private bool ResetPasswordByOtp(string email, string otpInput, string newPasswordHash, out string reason)
+        {
+            reason = "";
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(otpInput) || string.IsNullOrWhiteSpace(newPasswordHash))
+            {
+                reason = "BAD_INPUT";
+                return false;
+            }
+            string key = KeyEmail(email);
+
+            if (!OTPStore.TryGetValue(key, out var entry))
+            {
+                reason = "NO_OTP";
+                return false;
+            }
+
+            //hết hạn
+            if (DateTime.UtcNow > entry.ExpiresAtUtc)
+            {
+                OTPStore.TryRemove(key, out _);
+                reason = "OTP_EXPIRED";
+                return false;
+            }
+
+            //quá số lần thử?
+            if (entry.Attempts >= 5)
+            {
+                OTPStore.TryRemove(key, out _);
+                reason = "TOO_MANY_ATTEMPTS";
+                return false;
+            }
+
+            //sai OTP
+            if (entry.Otp != otpInput.Trim())
+            {
+                entry.Attempts++;
+                OTPStore[key] = entry;
+                reason = "OTP_WRONG";
+                return false;
+            }
+
+            //đúng OTP -> update password DB
+            try
+            {
+                using var conn = Connection.GetSqlConnection();
+                conn.Open();
+
+                using var cmd = new SqlCommand(@"UPDATE UserDB
+                                                 SET PasswordHash = @p
+                                                 WHERE Email = @e;", conn);
+                cmd.Parameters.AddWithValue("@p", newPasswordHash);
+                cmd.Parameters.AddWithValue("@e", email.Trim());
+                int affected = cmd.ExecuteNonQuery();
+                if (affected <= 0)
+                {
+                    reason = "EMAIL_NOT_FOUND";
+                    return false;
+                }
+
+                //xóa OTP sau khi dùng thành công
+                OTPStore.TryRemove(key, out _);
+                reason = "OK";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                reason = "DB_ERROR:" + ex.Message;
+                return false;
+            }
+        }
+
+        #endregion
+    }
+    public enum GameResult
+    {
+        Win,
+        Loss,
+        Draw
+    }
+
+    public static class EloCalculator
+    {
+        public static int GetK(int elo)
+        {
+            if (elo < 1600) return 25;
+            else if (elo < 2000 && elo >= 1600) return 20;
+            else if (elo < 2400 && elo >= 2000) return 15;
+            else return 10;
+        }
+
+        public static (int newA, int newB) Calculate(int eloA, int eloB, GameResult resultForA)
+        {
+            double expectedA = 1.0 / (1.0 + Math.Pow(10, (eloB - eloA) / 400.0));
+            double expectedB = 1.0 - expectedA;
+
+            double scoreA = resultForA == GameResult.Win ? 1.0 :
+                            resultForA == GameResult.Draw ? 0.5 : 0.0;
+            double scoreB = 1.0 - scoreA;
+
+            int kA = GetK(eloA);
+            int kB = GetK(eloB);
+
+            int newA = (int)Math.Round(eloA + kA * (scoreA - expectedA));
+            int newB = (int)Math.Round(eloB + kB * (scoreB - expectedB));
+
+            // Optional: chặn elo âm
+            newA = Math.Max(0, newA);
+            newB = Math.Max(0, newB);
+
+            return (newA, newB);
+        }
     }
 }

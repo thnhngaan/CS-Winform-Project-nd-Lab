@@ -222,7 +222,10 @@ public class WaitingRoomListener : MonoBehaviour
     {
         demoCTS?.Cancel();
         demoCTS?.Dispose();
-        VSText.gameObject.SetActive(true);
+        if (VSText != null)
+        {
+            VSText.gameObject.SetActive(true);
+        }
         demoCTS = null;
 
         statustext.text = "";

@@ -185,30 +185,24 @@ public class Game : MonoBehaviour // Hàm quản lí bàn cờ
         NextTurn();
     }
 
-    public void Winner(string playerWinner, bool notifyServer) // hàm trả về người thắng
+    private bool sentGameOver = false;
+    public void Winner(string winnerColor, bool notifyServer)
     {
         if (gameOver) return;
 
         gameOver = true;
         currentPlayer = "none";
 
-        if (notifyServer && NetworkClient.Instance != null && NetworkClient.Instance.IsConnected)
+        if (notifyServer && !sentGameOver && NetworkClient.Instance != null && NetworkClient.Instance.IsConnected)
         {
-            try
-            {
-                string roomId = GameSession.RoomId;
-                string msg = $"GAME_OVER|{roomId}|{playerWinner}";
-                _ = NetworkClient.Instance.SendAsync(msg); // fire-and-forget
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogError("Send GAME_OVER error: " + ex.Message);
-            }
+            sentGameOver = true;
+            string roomId = GameSession.RoomId;
+            string msg = $"GAME_OVER|{roomId}|{winnerColor}\n";
+            _ = NetworkClient.Instance.SendAsync(msg);
         }
 
-        gameOverUI.ShowGameOver(playerWinner);
+        gameOverUI.ShowGameOver(winnerColor);
     }
-    // overload cũ để code cũ vẫn xài được
 
     public void Winner(string playerWinner)
     {

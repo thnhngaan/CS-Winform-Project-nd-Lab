@@ -63,3 +63,28 @@ CHECK (
     (IsPublic = 1 AND Password IS NULL)
  OR (IsPublic = 0 AND Password IS NOT NULL)
 );
+
+USE HackAChessDB
+GO
+CREATE TABLE MatchHistory
+(
+    MatchID        INT IDENTITY(1,1) PRIMARY KEY,
+    RoomID         INT NOT NULL,
+    PlayedAt       DATETIME2(0) NOT NULL DEFAULT SYSUTCDATETIME(),
+
+    Player1        NVARCHAR(50) NOT NULL,
+    Player2        NVARCHAR(50) NOT NULL,
+
+    EloBefore1     INT NOT NULL,
+    EloAfter1      INT NOT NULL,
+    EloBefore2     INT NOT NULL,
+    EloAfter2      INT NOT NULL,
+
+    WinnerUsername NVARCHAR(50) NULL,  --NULL => DRAW
+    Result         NVARCHAR(10) NOT NULL -- 'WIN'/'LOSS'/'DRAW' theo góc nhìn Player1 
+);
+GO
+
+CREATE INDEX IX_MH_Player1_PlayedAt ON dbo.MatchHistory(Player1, PlayedAt DESC);
+CREATE INDEX IX_MH_Player2_PlayedAt ON dbo.MatchHistory(Player2, PlayedAt DESC);
+GO
