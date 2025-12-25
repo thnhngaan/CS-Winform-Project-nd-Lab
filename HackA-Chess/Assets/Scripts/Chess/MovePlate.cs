@@ -115,11 +115,6 @@ public class MovePlate : MonoBehaviour // Hàm hiện bước đi
         gameController.SetPosition(reference);
         TryPromote(cm);
 
-        if (!gameEnded)
-        {
-            gameController.NextTurn();
-        }
-
         cm.DestroyMovePlates();
 
         // ===== 5. GỬI NƯỚC ĐI LÊN SERVER (from = tọa độ CŨ) =====
@@ -184,7 +179,7 @@ public class MovePlate : MonoBehaviour // Hàm hiện bước đi
                 return;
 
             string roomId = GameSession.RoomId ?? "000000";
-            string msg = $"MOVE|{roomId}|{fromX}|{fromY}|{toX}|{toY}";
+            string msg = $"MOVE|{roomId}|{fromX}|{fromY}|{toX}|{toY}\n";
             await NetworkClient.Instance.SendAsync(msg);
         }
         catch (System.Exception ex)
@@ -201,7 +196,7 @@ public class MovePlate : MonoBehaviour // Hàm hiện bước đi
                 return;
 
             string roomId = GameSession.RoomId ?? "000000";
-            string msg = $"GAME_OVER|{roomId}|{winnerColor}";
+            string msg = $"GAME_OVER|{roomId}|{winnerColor}/n";
             await NetworkClient.Instance.SendAsync(msg);
         }
         catch (System.Exception ex)

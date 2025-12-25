@@ -436,33 +436,69 @@ namespace HackA_Chess_Server_
                         if (parts[0] == "MOVE")
                         {
                             // MOVE|roomId|fromX|fromY|toX|toY
-                            if (parts.Length < 6)
-                                continue;
+                            if (parts.Length < 6) continue;
 
-                            string roomId = parts[1];
-                            string opponent = GetOpponentOf(roomId, currentUsername);
-                            if (string.IsNullOrEmpty(opponent))
+                            string roomId = parts[1].Trim();
+
+                            // lấy 2 người trong room (host=white, client=black)
+                            var users = GetRoomUsers(roomId);
+                            if (users == null) continue;
+                            var (host, clientUser) = users.Value;
+
+                            // xác định màu của người gửi
+                            string myColor = (KeyUser(currentUsername) == KeyUser(host)) ? "white" : "black";
+
+                            // check đúng lượt chưa
+                            string currentTurn = "white";
+                            lock (TurnStateLock)
+                            {
+                                if (TurnStates.TryGetValue(roomId, out var st))
+                                    currentTurn = st.CurrentTurnColor;
+                                else
+                                {
+                                    // phòng chưa có timer state thì init luôn
+                                    TurnStates[roomId] = new TurnState { CurrentTurnColor = "white", DeadlineUtc = DateTime.UtcNow.AddSeconds(30) };
+                                }
+                            }
+
+                            if (myColor != currentTurn)
+                            {
+                                // (optional) báo người gửi: không phải lượt
+                                // TcpClient meClient = ... nếu bạn có map username->TcpClient
+                                AppendText($"[MOVE] Reject: NOT_YOUR_TURN room={roomId} user={currentUsername} myColor={myColor} turn={currentTurn}");
                                 continue;
+                            }
+
+                            // forward cho đối thủ
+                            string opponent = GetOpponentOf(roomId, currentUsername);
+                            if (string.IsNullOrEmpty(opponent)) continue;
 
                             TcpClient oppClient = null;
                             lock (OnlineUsers)
-                            {
                                 OnlineUsers.TryGetValue(KeyUser(opponent), out oppClient);
-                            }
 
                             if (oppClient != null)
                             {
                                 try
                                 {
-                                    string forward = $"OPP_MOVE|{roomId}|{parts[2]}|{parts[3]}|{parts[4]}|{parts[5]}";
+                                    string forward = $"OPP_MOVE|{roomId}|{parts[2]}|{parts[3]}|{parts[4]}|{parts[5]}\n";
                                     byte[] data = Encoding.UTF8.GetBytes(forward);
                                     await oppClient.GetStream().WriteAsync(data, 0, data.Length);
+                                    await oppClient.GetStream().FlushAsync();
                                 }
                                 catch (Exception ex)
                                 {
                                     AppendText($"[MOVE] Lỗi gửi cho {opponent}: {ex.Message}");
                                 }
                             }
+
+                            // flip turn + reset timer
+                            string nextTurn = (currentTurn == "white") ? "black" : "white";
+                            StartTurn(roomId, nextTurn, 30);
+
+                            // broadcast TURN cho cả 2 (để client set lượt + reset UI timer)
+                            await BroadcastRoom(host, clientUser, $"TURN|{roomId}|{nextTurn}|30\n");
+
                             continue;
                         }
                         if (parts[0] == "GET_RANK")
@@ -501,40 +537,22 @@ namespace HackA_Chess_Server_
 
                         if (parts[0] == "GAME_OVER")
                         {
-                            // GAME_OVER|roomId|winnerColor
-                            if (parts.Length < 3)
-                                continue;
+                            if (parts.Length < 3) continue;
+                            string roomId = parts[1].Trim();
+                            string winnerColor = parts[2].Trim();
 
-                            string roomId = parts[1];
-                            string winnerColor = parts[2];
+                            CancelTurnTimer(roomId);
 
-                            string opponent = GetOpponentOf(roomId, currentUsername);
-                            if (!string.IsNullOrEmpty(opponent))
+                            var users = GetRoomUsers(roomId);
+                            if (users != null)
                             {
-                                TcpClient oppClient = null;
-                                lock (OnlineUsers)
-                                {
-                                    OnlineUsers.TryGetValue(KeyUser(opponent), out oppClient);
-                                }
-
-                                if (oppClient != null)
-                                {
-                                    try
-                                    {
-                                        string forward = $"GAME_OVER|{roomId}|{winnerColor}";
-                                        byte[] data = Encoding.UTF8.GetBytes(forward);
-                                        await oppClient.GetStream().WriteAsync(data, 0, data.Length);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        AppendText($"[GAME_OVER] Lỗi gửi cho {opponent}: {ex.Message}");
-                                    }
-                                }
+                                var (host, clientUser) = users.Value;
+                                await BroadcastRoom(host, clientUser, $"GAME_OVER|{roomId}|{winnerColor}\n");
                             }
 
-                            // TODO: sau này update lịch sử đấu / ELO ở đây
-
+                            // (về sau) ghi lịch sử match tại đây
                             continue;
+
                         }
                         if (parts[0] == "CHATGLOBAL")
                         {
@@ -937,8 +955,31 @@ namespace HackA_Chess_Server_
 
                             AppendText($"{response}");
                             continue;
+                        }
+                        if (parts[0] == "RESIGN")
+                        {
+                            // RESIGN|roomId
+                            if (parts.Length < 2) continue;
+                            string roomId = parts[1].Trim();
 
+                            var users = GetRoomUsers(roomId);
+                            if (users == null) continue;
+                            var (host, clientUser) = users.Value;
 
+                            string resigner = currentUsername;
+                            string resignerColor = (KeyUser(resigner) == KeyUser(host)) ? "white" : "black";
+                            string winnerColor = (resignerColor == "white") ? "black" : "white";
+
+                            CancelTurnTimer(roomId);
+
+                            // 1) thông báo ai đầu hàng
+                            await BroadcastRoom(host, clientUser, $"RESIGNED|{roomId}|{resigner}\n");
+
+                            // 2) chốt game over
+                            await BroadcastRoom(host, clientUser, $"GAME_OVER|{roomId}|{winnerColor}\n");
+
+                            AppendText($"[RESIGN] room={roomId} user={resigner} -> winner={winnerColor}");
+                            continue;
                         }
                     }
                 }
@@ -1128,8 +1169,6 @@ namespace HackA_Chess_Server_
             }
             return list;
         }
-
-
 
         public static bool TryJoinRoom(string roomId, string clientUsername)
         {
@@ -1425,6 +1464,8 @@ namespace HackA_Chess_Server_
 
             await SendLineAsync(Host, $"GAME_START|white|{roomId}|{client}\n");
             await SendLineAsync(Client, $"GAME_START|black|{roomId}|{host}\n");
+            StartTurn(roomId, "white", 30);
+            await BroadcastRoom(host, client, $"TURN|{roomId}|white|30\n");
 
             AppendText($"[GAME_START] {roomId} {host} vs {client}");
         }
@@ -1999,6 +2040,94 @@ namespace HackA_Chess_Server_
 
             // nếu both thì có thể coi như “quay về waiting room và bấm READY lại”
             // (không auto start game, vì bạn muốn lặp logic waiting room bình thường)
+        }
+        #endregion
+
+        #region Timer
+        class TurnState
+        {
+            public string RoomId;
+            public string CurrentTurnColor = "white";  // white/black
+            public DateTime DeadlineUtc;               // hạn chót
+            public CancellationTokenSource Cts;        // hủy timer loop
+        }
+
+        private readonly object TurnStateLock = new();
+        private readonly Dictionary<string, TurnState> TurnStates = new();
+
+        private void StartTurn(string roomId, string color, int seconds = 30)
+        {
+            CancellationToken token;
+
+            lock (TurnStateLock)
+            {
+                if (!TurnStates.TryGetValue(roomId, out var st))
+                {
+                    st = new TurnState { RoomId = roomId };
+                    TurnStates[roomId] = st;
+                }
+
+                st.CurrentTurnColor = color;
+                st.DeadlineUtc = DateTime.UtcNow.AddSeconds(seconds);
+
+                st.Cts?.Cancel();
+                st.Cts?.Dispose();
+                st.Cts = new CancellationTokenSource();
+                token = st.Cts.Token;
+            }
+
+            _ = RunTurnTimerLoop(roomId, token);
+        }
+
+        private async Task RunTurnTimerLoop(string roomId, CancellationToken ct)
+        {
+            try
+            {
+                while (!ct.IsCancellationRequested)
+                {
+                    TurnState st;
+                    lock (TurnStateLock)
+                    {
+                        if (!TurnStates.TryGetValue(roomId, out st)) return;
+                    }
+
+                    int remainingMs = (int)(st.DeadlineUtc - DateTime.UtcNow).TotalMilliseconds;
+                    if (remainingMs < 0) remainingMs = 0;
+
+                    var users = GetRoomUsers(roomId);
+                    if (users == null) return;
+                    var (host, client) = users.Value;
+
+                    // gửi TIME cho cả phòng
+                    await BroadcastRoom(host, client, $"TIME|{roomId}|{st.CurrentTurnColor}|{remainingMs}\n");
+
+                    if (remainingMs == 0)
+                    {
+                        string loser = st.CurrentTurnColor;
+                        string winner = (loser == "white") ? "black" : "white";
+
+                        await BroadcastRoom(host, client, $"TIMEOUT|{roomId}|{loser}|{winner}\n");
+                        await BroadcastRoom(host, client, $"GAME_OVER|{roomId}|{winner}\n");
+                        CancelTurnTimer(roomId);
+                        return;
+                    }
+
+                    await Task.Delay(1000, ct); // 4 lần/giây
+                }
+            }
+            catch (TaskCanceledException) { }
+        }
+        private void CancelTurnTimer(string roomId)
+        {   
+            lock (TurnStateLock)
+            {
+                if (TurnStates.TryGetValue(roomId, out var st))
+                {
+                    st.Cts?.Cancel();
+                    st.Cts?.Dispose();
+                    st.Cts = null;
+                }
+            }
         }
         #endregion
     }
