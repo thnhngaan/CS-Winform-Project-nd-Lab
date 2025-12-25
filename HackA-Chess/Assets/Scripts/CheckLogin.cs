@@ -22,7 +22,7 @@ namespace Assets.Scripts
         [Header("Next Scene / Panel")]
         public string NextScene;
 
-        private string serverIP = "127.0.0.1";// chỉnh sửa IP server nha, để người chơi nhập///////
+        private string serverIP = "103.67.199.222";// chỉnh sửa IP server nha, để người chơi nhập///////
         private int Port = 8080;
 
         private void Start()

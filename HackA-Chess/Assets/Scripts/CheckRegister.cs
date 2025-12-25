@@ -168,7 +168,7 @@ public class RegisterUI : MonoBehaviour
             return sb.ToString();
         }
     }
-    const string IPServer = "127.0.0.1";
+    const string IPServer = "103.67.199.222";
     const int PortServer = 8080;
     // Gửi dữ liệu TCP
     private async Task<string> SendRegisterRequestAsync(string username, string hashedPassword, string email, string fullname, string sdt)

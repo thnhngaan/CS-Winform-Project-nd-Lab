@@ -70,8 +70,7 @@ public class GameNetworkListener : MonoBehaviour // Hàm lắng nghe msg từ c�
     }
     private bool _handledGameOver = false;
     private void HandleGameOver(string[] parts)
-    {   
-        // GAME_OVER|roomId|winnerColor
+    {
         if (parts.Length < 3) return;
 
         string roomId = parts[1].Trim();
@@ -80,9 +79,18 @@ public class GameNetworkListener : MonoBehaviour // Hàm lắng nghe msg từ c�
         if (_handledGameOver) return;
         _handledGameOver = true;
 
-        string winnerColor = parts[2].Trim().ToLower();
+        string winnerColor;
+        if (parts.Length >= 4 &&
+            (parts[2].Equals("WIN", System.StringComparison.OrdinalIgnoreCase) ||
+             parts[2].Equals("LOSE", System.StringComparison.OrdinalIgnoreCase)))
+        {
+            winnerColor = parts[3].Trim().ToLowerInvariant(); // format mới
+        }
+        else
+        {
+            winnerColor = parts[2].Trim().ToLowerInvariant(); // format cũ
+        }
 
-        // Delay show gameover để kịp đọc toast
         if (_gameOverCo != null) StopCoroutine(_gameOverCo);
         _gameOverCo = StartCoroutine(ShowGameOverDelayed(winnerColor));
     }
@@ -92,7 +100,7 @@ public class GameNetworkListener : MonoBehaviour // Hàm lắng nghe msg từ c�
     {
         yield return new WaitForSecondsRealtime(gameOverDelay);
         gameOverUI?.ShowGameOver(winnerColor);
-    }
+    }   
 
     [SerializeField] private StatusResignUI toast;
     private void HandleResigned(string[] parts)

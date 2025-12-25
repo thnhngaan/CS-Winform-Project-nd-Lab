@@ -1322,7 +1322,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameNetworkListener
   game: {fileID: 1212753198}
-  statusText: {fileID: 0}
+  statusText: {fileID: 689913209}
   gameOverDelay: 1.5
   gameOverUI: {fileID: 1161149030}
   toast: {fileID: 2126450124}

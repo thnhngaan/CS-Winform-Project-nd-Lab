@@ -1107,7 +1107,6 @@ namespace HackA_Chess_Server_
                         }
                         if (parts[0] == "RESIGN")
                         {
-                            // RESIGN|roomId
                             if (parts.Length < 2) continue;
                             string roomId = parts[1].Trim();
 
@@ -1116,16 +1115,35 @@ namespace HackA_Chess_Server_
                             var (host, clientUser) = users.Value;
 
                             string resigner = currentUsername;
+
+                            // Xác định màu của người đầu hàng -> winnerColor
                             string resignerColor = (KeyUser(resigner) == KeyUser(host)) ? "white" : "black";
                             string winnerColor = (resignerColor == "white") ? "black" : "white";
-                            var elo = UpdateEloAndInsertHistory(int.Parse(roomId.Trim()), host, clientUser, winnerColor);
-                            // 1) thông báo ai đầu hàng
+
+                            // chống double finish
+                            if (!TryMarkRoomFinished(roomId))
+                            {
+                                AppendText($"[RESIGN] Room {roomId} already finished -> ignore");
+                                continue;
+                            }
+
+                            // 1) toast
                             await BroadcastRoom(host, clientUser, $"RESIGNED|{roomId}|{resigner}\n");
 
-                            // 2) chốt game over
-                            await BroadcastRoom(host, clientUser, $"GAME_OVER|{roomId}|{winnerColor}\n");
+                            // 2) update elo + history 1 lần
+                            var elo = UpdateEloAndInsertHistory(int.Parse(roomId), host, clientUser, winnerColor);
 
-                            AppendText($"[RESIGN] room={roomId} user={resigner} -> winner={winnerColor}");
+                            // 3) gửi gameover format mới (WIN/LOSE + elo) cho cả 2
+                            // (giống y chang logic bạn đang có trong case GAME_OVER)
+                            SendToUserIfOnline(host, winnerColor == "white"
+                                ? $"GAME_OVER|{roomId}|WIN|{winnerColor}|{elo.beforeW}|{elo.afterW}|{elo.beforeB}|{elo.afterB}\n"
+                                : $"GAME_OVER|{roomId}|LOSE|{winnerColor}|{elo.beforeW}|{elo.afterW}|{elo.beforeB}|{elo.afterB}\n");
+
+                            SendToUserIfOnline(clientUser, winnerColor == "black"
+                                ? $"GAME_OVER|{roomId}|WIN|{winnerColor}|{elo.beforeB}|{elo.afterB}|{elo.beforeW}|{elo.afterW}\n"
+                                : $"GAME_OVER|{roomId}|LOSE|{winnerColor}|{elo.beforeB}|{elo.afterB}|{elo.beforeW}|{elo.afterW}\n");
+
+                            AppendText($"[RESIGN] room={roomId} resigner={resigner} winnerColor={winnerColor}");
                             continue;
                         }
                     }
