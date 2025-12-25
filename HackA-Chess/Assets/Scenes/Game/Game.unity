@@ -1463,15 +1463,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameNetworkListener
   game: {fileID: 1212753198}
   statusText: {fileID: 0}
-<<<<<<< HEAD
-  gameOverUI: {fileID: 1161149030}
-=======
   gameOverDelay: 1.5
   gameOverUI: {fileID: 1161149030}
   myTimerText: {fileID: 937417625}
   oppTimerText: {fileID: 113400712}
   toast: {fileID: 2126450124}
->>>>>>> ngan
 --- !u!4 &454809213
 Transform:
   m_ObjectHideFlags: 0
